@@ -1,5 +1,5 @@
-﻿import { PlaceholderScreen } from '@/components/placeholder-screen';
+import { SignIn } from '@/screens/auth/sign-in';
 
-export default function CustomersigninRoute() {
-  return <PlaceholderScreen title="Customer sign in" />;
+export default function SignInRoute() {
+  return <SignIn />;
 }

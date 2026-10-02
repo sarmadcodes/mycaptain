@@ -1,5 +1,5 @@
-﻿import { PlaceholderScreen } from '@/components/placeholder-screen';
+import { Verify } from '@/screens/auth/verify';
 
-export default function VerifycodeRoute() {
-  return <PlaceholderScreen title="Verify code" />;
+export default function VerifyRoute() {
+  return <Verify />;
 }

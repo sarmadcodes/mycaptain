@@ -1,5 +1,5 @@
-﻿import { PlaceholderScreen } from '@/components/placeholder-screen';
+import { SignUp } from '@/screens/auth/sign-up';
 
-export default function CreateaccountRoute() {
-  return <PlaceholderScreen title="Create account" />;
+export default function SignUpRoute() {
+  return <SignUp />;
 }

@@ -1,5 +1,5 @@
-﻿import { PlaceholderScreen } from '@/components/placeholder-screen';
+import { StaffSignIn } from '@/screens/auth/staff-sign-in';
 
-export default function StaffsigninRoute() {
-  return <PlaceholderScreen title="Staff sign in" />;
+export default function StaffSignInRoute() {
+  return <StaffSignIn />;
 }

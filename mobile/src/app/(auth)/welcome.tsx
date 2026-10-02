@@ -1,5 +1,5 @@
-﻿import { PlaceholderScreen } from '@/components/placeholder-screen';
+import { Welcome } from '@/screens/auth/welcome';
 
 export default function WelcomeRoute() {
-  return <PlaceholderScreen title="Welcome" />;
+  return <Welcome />;
 }

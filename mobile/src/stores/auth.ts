@@ -1,9 +1,10 @@
-import * as SecureStore from 'expo-secure-store';
 import { create } from 'zustand';
 
+import { secureStorage } from '@/lib/secure-storage';
 import type { Role, User } from '@/types';
 
 const TOKEN_KEY = 'mc.token';
+const USER_KEY = 'mc.user';
 
 type AuthState = {
   user: User | null;
@@ -20,15 +21,25 @@ export const useAuth = create<AuthState>((set) => ({
   hydrated: false,
   // TODO(backend): validate stored token with GET /auth/me once the API exists.
   hydrate: async () => {
-    const token = await SecureStore.getItemAsync(TOKEN_KEY);
-    set({ token, hydrated: true });
+    try {
+      const [token, rawUser] = await Promise.all([
+        secureStorage.get(TOKEN_KEY),
+        secureStorage.get(USER_KEY),
+      ]);
+      set({ token, user: token && rawUser ? (JSON.parse(rawUser) as User) : null });
+    } finally {
+      set({ hydrated: true });
+    }
   },
   signIn: async (token, user) => {
-    await SecureStore.setItemAsync(TOKEN_KEY, token);
+    await Promise.all([
+      secureStorage.set(TOKEN_KEY, token),
+      secureStorage.set(USER_KEY, JSON.stringify(user)),
+    ]);
     set({ token, user });
   },
   signOut: async () => {
-    await SecureStore.deleteItemAsync(TOKEN_KEY);
+    await Promise.all([secureStorage.remove(TOKEN_KEY), secureStorage.remove(USER_KEY)]);
     set({ token: null, user: null });
   },
 }));
