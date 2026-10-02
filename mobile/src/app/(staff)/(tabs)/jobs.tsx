@@ -1,5 +1,5 @@
-﻿import { PlaceholderScreen } from '@/components/placeholder-screen';
+import { StaffJobs } from '@/screens/staff/jobs';
 
 export default function JobsRoute() {
-  return <PlaceholderScreen title="Jobs" />;
+  return <StaffJobs />;
 }

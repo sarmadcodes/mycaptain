@@ -1,5 +1,5 @@
-﻿import { PlaceholderScreen } from '@/components/placeholder-screen';
+import { ScheduleStep } from '@/screens/booking/schedule';
 
 export default function ScheduleRoute() {
-  return <PlaceholderScreen title="Schedule" />;
+  return <ScheduleStep />;
 }

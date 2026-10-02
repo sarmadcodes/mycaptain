@@ -1,5 +1,5 @@
-﻿import { PlaceholderScreen } from '@/components/placeholder-screen';
+import { StaffAlerts } from '@/screens/staff/alerts';
 
 export default function AlertsRoute() {
-  return <PlaceholderScreen title="Alerts" />;
+  return <StaffAlerts />;
 }

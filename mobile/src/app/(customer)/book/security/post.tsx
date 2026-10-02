@@ -1,5 +1,5 @@
-﻿import { PlaceholderScreen } from '@/components/placeholder-screen';
+import { SecurityPostStep } from '@/screens/booking/security-post';
 
-export default function DutypostRoute() {
-  return <PlaceholderScreen title="Duty post" />;
+export default function SecurityPostRoute() {
+  return <SecurityPostStep />;
 }

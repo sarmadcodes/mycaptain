@@ -1,5 +1,5 @@
-﻿import { PlaceholderScreen } from '@/components/placeholder-screen';
+import { SecurityTypeStep } from '@/screens/booking/security-type';
 
-export default function SecuritytypeRoute() {
-  return <PlaceholderScreen title="Security type" />;
+export default function SecurityTypeRoute() {
+  return <SecurityTypeStep />;
 }

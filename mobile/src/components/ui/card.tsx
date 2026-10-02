@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
-import { StyleSheet, View, type ViewStyle } from 'react-native';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { colors, radius, space } from '@/theme';
 
-export function Card({ children, style, tinted }: { children: ReactNode; style?: ViewStyle; tinted?: boolean }) {
+export function Card({ children, style, tinted }: { children: ReactNode; style?: StyleProp<ViewStyle>; tinted?: boolean }) {
   return <View style={[styles.card, tinted && styles.tinted, style]}>{children}</View>;
 }
 

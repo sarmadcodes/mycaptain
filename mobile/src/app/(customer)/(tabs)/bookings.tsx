@@ -1,5 +1,5 @@
-﻿import { PlaceholderScreen } from '@/components/placeholder-screen';
+import { CustomerBookings } from '@/screens/customer/bookings';
 
 export default function BookingsRoute() {
-  return <PlaceholderScreen title="Bookings" />;
+  return <CustomerBookings />;
 }

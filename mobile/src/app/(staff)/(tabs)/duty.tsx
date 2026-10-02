@@ -1,5 +1,5 @@
-﻿import { PlaceholderScreen } from '@/components/placeholder-screen';
+import { StaffDuty } from '@/screens/staff/duty';
 
 export default function DutyRoute() {
-  return <PlaceholderScreen title="Duty" />;
+  return <StaffDuty />;
 }

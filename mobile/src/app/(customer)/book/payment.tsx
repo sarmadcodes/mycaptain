@@ -1,5 +1,5 @@
-﻿import { PlaceholderScreen } from '@/components/placeholder-screen';
+import { PaymentStep } from '@/screens/booking/payment';
 
 export default function PaymentRoute() {
-  return <PlaceholderScreen title="Payment" />;
+  return <PaymentStep />;
 }

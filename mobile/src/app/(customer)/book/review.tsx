@@ -1,5 +1,5 @@
-﻿import { PlaceholderScreen } from '@/components/placeholder-screen';
+import { ReviewStep } from '@/screens/booking/review';
 
-export default function ReviewbookingRoute() {
-  return <PlaceholderScreen title="Review booking" />;
+export default function ReviewRoute() {
+  return <ReviewStep />;
 }

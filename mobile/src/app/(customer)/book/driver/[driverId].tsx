@@ -1,5 +1,5 @@
-import { PlaceholderScreen } from '@/components/placeholder-screen';
+import { StaffProfileStep } from '@/screens/booking/staff-profile';
 
-export default function DriverProfileRoute() {
-  return <PlaceholderScreen title="Driver profile" />;
+export default function StaffProfileRoute() {
+  return <StaffProfileStep />;
 }

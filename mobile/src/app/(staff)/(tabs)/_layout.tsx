@@ -42,7 +42,7 @@ export default function StaffTabs() {
         }}
       />
       <Tabs.Screen
-        name="profile"
+        name="account"
         options={{
           title: 'Profile',
           tabBarIcon: ({ color }) => <UserRound color={color} size={iconSize.md} strokeWidth={iconStroke} />,

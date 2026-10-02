@@ -1,5 +1,5 @@
-import { PlaceholderScreen } from '@/components/placeholder-screen';
+import { LiveDuty } from '@/screens/customer/live-duty';
 
 export default function LiveDutyRoute() {
-  return <PlaceholderScreen title="Live duty" />;
+  return <LiveDuty />;
 }

@@ -1,5 +1,5 @@
-﻿import { PlaceholderScreen } from '@/components/placeholder-screen';
+import { CustomerSupport } from '@/screens/customer/support';
 
 export default function SupportRoute() {
-  return <PlaceholderScreen title="Support" />;
+  return <CustomerSupport />;
 }

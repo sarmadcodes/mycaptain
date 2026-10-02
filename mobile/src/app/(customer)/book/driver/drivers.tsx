@@ -1,5 +1,5 @@
-﻿import { PlaceholderScreen } from '@/components/placeholder-screen';
+import { StaffList } from '@/screens/booking/staff-list';
 
-export default function ChooseadriverRoute() {
-  return <PlaceholderScreen title="Choose a driver" />;
+export default function DriversRoute() {
+  return <StaffList kind="driver" />;
 }

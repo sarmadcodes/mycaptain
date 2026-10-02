@@ -1,5 +1,5 @@
-﻿import { PlaceholderScreen } from '@/components/placeholder-screen';
+import { VehicleStep } from '@/screens/booking/vehicle';
 
-export default function YourvehicleRoute() {
-  return <PlaceholderScreen title="Your vehicle" />;
+export default function VehicleRoute() {
+  return <VehicleStep />;
 }

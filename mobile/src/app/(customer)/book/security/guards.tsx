@@ -1,5 +1,5 @@
-﻿import { PlaceholderScreen } from '@/components/placeholder-screen';
+import { StaffList } from '@/screens/booking/staff-list';
 
-export default function ChoosepersonnelRoute() {
-  return <PlaceholderScreen title="Choose personnel" />;
+export default function GuardsRoute() {
+  return <StaffList kind="security" />;
 }
