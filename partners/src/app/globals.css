@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+/* My Captain brand tokens. Light and dark share names so components never branch. */
+:root {
+  --bg: #ffffff;
+  --surface: #f7f8fa;
+  --elevated: #ffffff;
+  --border: #e6e8ec;
+  --text: #101c30;
+  --muted: #5b6475;
+  --faint: #8a93a3;
+  --navy: #101c30;
+  --navy-text: #b7c2d6;
+  --blue: #246bfd;
+  --blue-hover: #1557e0;
+  --pale: #eff4ff;
+  --red: #e45562;
+  --green: #1f9d6b;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b1322;
+    --surface: #111b2d;
+    --elevated: #142036;
+    --border: #22304a;
+    --text: #e8edf6;
+    --muted: #a3aec2;
+    --faint: #7c879c;
+    --navy: #142540;
+    --navy-text: #b7c2d6;
+    --blue: #4a85ff;
+    --blue-hover: #6b9bff;
+    --pale: #16233d;
+    --red: #f07a85;
+    --green: #3cc08b;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-elevated: var(--elevated);
+  --color-line: var(--border);
+  --color-ink: var(--text);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-navy: var(--navy);
+  --color-navy-text: var(--navy-text);
+  --color-blue: var(--blue);
+  --color-blue-hover: var(--blue-hover);
+  --color-pale: var(--pale);
+  --color-danger: var(--red);
+  --color-success: var(--green);
+  --font-sans: var(--font-manrope);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-manrope), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .rise {
+    animation: rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .rise-2 {
+    animation-delay: 0.08s;
+  }
+  .rise-3 {
+    animation-delay: 0.16s;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
