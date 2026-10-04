@@ -34,12 +34,10 @@ export function StaffSignIn() {
   const EyeIcon = showPassword ? EyeOff : Eye;
 
   return (
-    <Screen
-      header={<Header />}
-      footer={<Button label="Sign in" loading={formState.isSubmitting} onPress={onSubmit} />}>
+    <Screen header={<Header />} footer={<Button label="Sign in" loading={formState.isSubmitting} onPress={onSubmit} />}>
       <View style={styles.intro}>
         <Text variant="title">Staff sign in</Text>
-        <Text tone="muted">For drivers and guards employed by a My Captain partner company.</Text>
+        <Text tone="muted">For partner drivers and guards, and My Captain operations staff.</Text>
       </View>
 
       <View style={styles.fields}>

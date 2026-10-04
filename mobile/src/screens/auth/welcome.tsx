@@ -44,7 +44,10 @@ export function Welcome() {
             style={({ pressed }) => [styles.partner, pressed && { opacity: 0.6 }]}>
             <Building2 color={colors.textMuted} size={iconSize.sm} strokeWidth={iconStroke} />
             <Text variant="caption" tone="muted" style={{ flex: 1 }}>
-              Run a driver or security company? <Text variant="caption" tone="accent">Become a partner</Text>
+              Run a driver or security company?{' '}
+              <Text variant="caption" tone="accent">
+                Become a partner
+              </Text>
             </Text>
           </Pressable>
         </View>
@@ -68,7 +71,13 @@ const styles = StyleSheet.create({
     paddingTop: space.lg,
     paddingBottom: space.sm,
   },
-  sheetWide: { flex: 1, borderTopRightRadius: 0, borderBottomLeftRadius: radius.xl, justifyContent: 'center', alignItems: 'center' },
+  sheetWide: {
+    flex: 1,
+    borderTopRightRadius: 0,
+    borderBottomLeftRadius: radius.xl,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   actions: { gap: space.xs },
   partner: { flexDirection: 'row', alignItems: 'center', gap: space.sm, justifyContent: 'center', paddingVertical: space.sm },
 });

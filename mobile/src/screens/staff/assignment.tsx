@@ -56,12 +56,15 @@ export function AssignmentDetail() {
           <Text tone="muted">{a.notes}</Text>
         </Section>
         {accepted ? (
-          <Button
-            label="Call customer"
-            variant="secondary"
-            icon={<Phone color={colors.text} size={iconSize.md} strokeWidth={iconStroke} />}
-            onPress={() => Linking.openURL('tel:+923000000000')}
-          />
+          <View style={{ gap: space.sm }}>
+            <Button label="Message customer" variant="secondary" onPress={() => router.push(`/messages/${a.id}`)} />
+            <Button
+              label="Call customer"
+              variant="secondary"
+              icon={<Phone color={colors.text} size={iconSize.md} strokeWidth={iconStroke} />}
+              onPress={() => Linking.openURL('tel:+923000000000')}
+            />
+          </View>
         ) : (
           <Text variant="caption" tone="muted">
             Customer contact details unlock after you accept.

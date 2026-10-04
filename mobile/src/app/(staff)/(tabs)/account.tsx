@@ -5,11 +5,21 @@ import { Linking } from 'react-native';
 import { Profile } from '@/screens/shared/profile';
 
 const items = [
-  { icon: CalendarCheck, title: 'Availability', subtitle: 'Working days and shifts', onPress: () => router.push('/me/availability') },
+  {
+    icon: CalendarCheck,
+    title: 'Availability',
+    subtitle: 'Working days and shifts',
+    onPress: () => router.push('/me/availability'),
+  },
   { icon: History, title: 'Duty history', subtitle: 'Check-ins, reports and hours', onPress: () => router.push('/me/history') },
   { icon: FileText, title: 'Documents', subtitle: 'CNIC, licence, training', onPress: () => router.push('/me/documents') },
   { icon: Building2, title: 'Your company', onPress: () => router.push('/me/company') },
-  { icon: LifeBuoy, title: 'Contact operations', subtitle: 'Available 24 hours', onPress: () => Linking.openURL('tel:+922100000000') },
+  {
+    icon: LifeBuoy,
+    title: 'Contact operations',
+    subtitle: 'Available 24 hours',
+    onPress: () => Linking.openURL('tel:+922100000000'),
+  },
 ];
 
 export default function StaffAccountRoute() {

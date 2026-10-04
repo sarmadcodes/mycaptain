@@ -29,9 +29,8 @@ export function Profile({ items }: { items: ProfileItem[] }) {
             <Text variant="label" tone="muted">
               {user.phone}
             </Text>
-            {isStaff(user.role) ? (
-              <Badge label={`Verified ${user.role}`} tone="green" />
-            ) : null}
+            {isStaff(user.role) ? <Badge label={`Verified ${user.role}`} tone="green" /> : null}
+            {user.role === 'admin' ? <Badge label="Operations admin" tone="blue" /> : null}
           </View>
         </View>
 

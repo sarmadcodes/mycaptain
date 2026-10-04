@@ -57,9 +57,27 @@ export function PaymentStep() {
         <Text tone="muted">Every payment stays inside My Captain.</Text>
       </View>
       <View style={styles.options}>
-        <SelectCard icon={CreditCard} title="Debit or credit card" subtitle="Visa, Mastercard, UnionPay" selected={method === 'card'} onPress={() => setMethod('card')} />
-        <SelectCard icon={Smartphone} title="Mobile wallet" subtitle="JazzCash or Easypaisa" selected={method === 'wallet'} onPress={() => setMethod('wallet')} />
-        <SelectCard icon={Landmark} title="Bank transfer" subtitle="Raast or IBFT" selected={method === 'bank'} onPress={() => setMethod('bank')} />
+        <SelectCard
+          icon={CreditCard}
+          title="Debit or credit card"
+          subtitle="Visa, Mastercard, UnionPay"
+          selected={method === 'card'}
+          onPress={() => setMethod('card')}
+        />
+        <SelectCard
+          icon={Smartphone}
+          title="Mobile wallet"
+          subtitle="JazzCash or Easypaisa"
+          selected={method === 'wallet'}
+          onPress={() => setMethod('wallet')}
+        />
+        <SelectCard
+          icon={Landmark}
+          title="Bank transfer"
+          subtitle="Raast or IBFT"
+          selected={method === 'bank'}
+          onPress={() => setMethod('bank')}
+        />
       </View>
       <Text variant="caption" tone="muted" style={{ marginTop: space.xl }}>
         Receipts and invoices are saved in Bookings. Extensions and renewals use the same checkout.

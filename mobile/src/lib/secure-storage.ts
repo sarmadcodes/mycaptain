@@ -5,10 +5,8 @@ import { Platform } from 'react-native';
 const web = Platform.OS === 'web';
 
 export const secureStorage = {
-  get: (key: string) =>
-    web ? Promise.resolve(globalThis.localStorage?.getItem(key) ?? null) : SecureStore.getItemAsync(key),
+  get: (key: string) => (web ? Promise.resolve(globalThis.localStorage?.getItem(key) ?? null) : SecureStore.getItemAsync(key)),
   set: (key: string, value: string) =>
     web ? Promise.resolve(globalThis.localStorage?.setItem(key, value)) : SecureStore.setItemAsync(key, value),
-  remove: (key: string) =>
-    web ? Promise.resolve(globalThis.localStorage?.removeItem(key)) : SecureStore.deleteItemAsync(key),
+  remove: (key: string) => (web ? Promise.resolve(globalThis.localStorage?.removeItem(key)) : SecureStore.deleteItemAsync(key)),
 };

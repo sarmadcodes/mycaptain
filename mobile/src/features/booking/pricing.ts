@@ -1,4 +1,4 @@
-import type { VehicleClass } from '@/lib/mock-data';
+import { findCar, type VehicleClass } from '@/lib/mock-data';
 
 import type { BookingDraft } from './store';
 
@@ -23,14 +23,22 @@ const planDiscount = { hourly: 1, daily: 0.95, monthly: 0.85, contract: 0.8 };
 
 export function hourlyRate(d: BookingDraft) {
   if (d.service === 'driver') return driverRate[d.vehicle.class];
-  if (d.service === 'team') return securityRate.gunman + securityRate.guard * (d.personnel - 1);
+  // Rental day rate covers car and driver for 8 hours; fuel billed at actuals.
+  if (d.service === 'rental') return (findCar(d.carId)?.perDay ?? 9000) / 8;
+  // Team = one armed lead plus the chosen number of guards.
+  if (d.service === 'team') return securityRate.gunman + securityRate.guard * d.personnel;
   return securityRate[d.service] * d.personnel;
 }
 
 export function quote(d: BookingDraft) {
   const subtotal = Math.round(hourlyRate(d) * billableHours(d) * planDiscount[d.plan]);
   const fee = Math.round(subtotal * 0.05);
-  return { subtotal, fee, total: subtotal + fee, perPeriod: d.plan === 'contract' ? Math.round((subtotal + fee) / d.contractMonths) : undefined };
+  return {
+    subtotal,
+    fee,
+    total: subtotal + fee,
+    perPeriod: d.plan === 'contract' ? Math.round((subtotal + fee) / d.contractMonths) : undefined,
+  };
 }
 
 export const formatPKR = (n: number) => `PKR ${n.toLocaleString('en-PK')}`;

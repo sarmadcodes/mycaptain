@@ -22,20 +22,14 @@ export const useAuth = create<AuthState>((set) => ({
   // TODO(backend): validate stored token with GET /auth/me once the API exists.
   hydrate: async () => {
     try {
-      const [token, rawUser] = await Promise.all([
-        secureStorage.get(TOKEN_KEY),
-        secureStorage.get(USER_KEY),
-      ]);
+      const [token, rawUser] = await Promise.all([secureStorage.get(TOKEN_KEY), secureStorage.get(USER_KEY)]);
       set({ token, user: token && rawUser ? (JSON.parse(rawUser) as User) : null });
     } finally {
       set({ hydrated: true });
     }
   },
   signIn: async (token, user) => {
-    await Promise.all([
-      secureStorage.set(TOKEN_KEY, token),
-      secureStorage.set(USER_KEY, JSON.stringify(user)),
-    ]);
+    await Promise.all([secureStorage.set(TOKEN_KEY, token), secureStorage.set(USER_KEY, JSON.stringify(user))]);
     set({ token, user });
   },
   signOut: async () => {
@@ -45,3 +39,7 @@ export const useAuth = create<AuthState>((set) => ({
 }));
 
 export const isStaff = (role?: Role) => role === 'driver' || role === 'guard';
+
+// Landing screen for each role's area of the app.
+export const homeFor = (role: Role) =>
+  (role === 'admin' ? '/overview' : isStaff(role) ? '/jobs' : '/home') as '/overview' | '/jobs' | '/home';

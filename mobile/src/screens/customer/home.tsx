@@ -1,9 +1,10 @@
 import { router } from 'expo-router';
-import { ArrowRight, Car, ChevronDown, MapPin, ShieldCheck } from 'lucide-react-native';
+import { ArrowRight, Car, CarFront, ChevronDown, MapPin, ShieldCheck } from 'lucide-react-native';
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Avatar, Badge, Card, ListRow, Section, Text } from '@/components/ui';
+import { Avatar, Badge, Card, ListRow, Section, Select, Text } from '@/components/ui';
 import { useBookingDraft } from '@/features/booking/store';
 import { bookings, findStaff, statusLabel } from '@/lib/mock-data';
 import { useResponsive } from '@/lib/use-responsive';
@@ -26,7 +27,9 @@ export function CustomerHome() {
   const upcoming = bookings.filter((b) => b.status === 'confirmed');
   const activeStaff = findStaff(active?.staffId);
 
-  const start = (service: ServiceType, path: '/book/driver/vehicle' | '/book/security/type') => {
+  const [city, setCity] = useState('Karachi');
+
+  const start = (service: ServiceType, path: '/book/driver/vehicle' | '/book/security/type' | '/book/rental/cars') => {
     reset(service);
     router.push(path);
   };
@@ -49,11 +52,26 @@ export function CustomerHome() {
             </Text>
             <Text variant="title">{name}</Text>
           </View>
-          <Pressable style={styles.city} accessibilityRole="button" accessibilityLabel="Service city">
-            <MapPin color={colors.blue} size={iconSize.sm} strokeWidth={iconStroke} />
-            <Text variant="label">Karachi</Text>
-            <ChevronDown color={colors.textMuted} size={iconSize.sm} strokeWidth={iconStroke} />
-          </Pressable>
+          <Select
+            label="Service city"
+            sheetTitle="Choose your city"
+            value={city}
+            onChange={setCity}
+            options={[
+              { label: 'Karachi', value: 'Karachi' },
+              { label: 'Lahore', value: 'Lahore' },
+              { label: 'Islamabad', value: 'Islamabad' },
+              { label: 'Rawalpindi', value: 'Rawalpindi', hint: 'Coming soon', disabled: true },
+              { label: 'Faisalabad', value: 'Faisalabad', hint: 'Coming soon', disabled: true },
+            ]}
+            trigger={(label) => (
+              <View style={styles.city}>
+                <MapPin color={colors.blue} size={iconSize.sm} strokeWidth={iconStroke} />
+                <Text variant="label">{label}</Text>
+                <ChevronDown color={colors.textMuted} size={iconSize.sm} strokeWidth={iconStroke} />
+              </View>
+            )}
+          />
         </View>
 
         <Text variant="display" style={styles.headline}>
@@ -82,23 +100,42 @@ export function CustomerHome() {
               <ArrowRight color={colors.navy} size={iconSize.md} strokeWidth={iconStroke} />
             </View>
           </Pressable>
-          <Pressable
-            onPress={() => start('guard', '/book/security/type')}
-            style={({ pressed }) => [
-              styles.serviceAlt,
-              { padding: r.compact ? space.lg : space.xl },
-              servicesRow && styles.flex1,
-              pressed && styles.pressed,
-            ]}>
-            <ShieldCheck color={colors.blue} size={26} strokeWidth={iconStroke} />
-            <View style={styles.altText}>
-              <Text variant="heading">Book security</Text>
-              <Text variant="label" tone="muted">
-                Guard, armed gunman or a team
-              </Text>
-            </View>
-            <ArrowRight color={colors.blue} size={iconSize.md} strokeWidth={iconStroke} />
-          </Pressable>
+          <View style={[styles.side, servicesRow && styles.flex1]}>
+            <Pressable
+              onPress={() => start('rental', '/book/rental/cars')}
+              style={({ pressed }) => [
+                styles.serviceAlt,
+                { padding: r.compact ? space.lg : space.xl },
+                servicesRow && styles.flex1,
+                pressed && styles.pressed,
+              ]}>
+              <CarFront color={colors.blue} size={26} strokeWidth={iconStroke} />
+              <View style={styles.altText}>
+                <Text variant="heading">Rent a car</Text>
+                <Text variant="label" tone="muted">
+                  Comes with a verified driver
+                </Text>
+              </View>
+              <ArrowRight color={colors.blue} size={iconSize.md} strokeWidth={iconStroke} />
+            </Pressable>
+            <Pressable
+              onPress={() => start('guard', '/book/security/type')}
+              style={({ pressed }) => [
+                styles.serviceAlt,
+                { padding: r.compact ? space.lg : space.xl },
+                servicesRow && styles.flex1,
+                pressed && styles.pressed,
+              ]}>
+              <ShieldCheck color={colors.blue} size={26} strokeWidth={iconStroke} />
+              <View style={styles.altText}>
+                <Text variant="heading">Book security</Text>
+                <Text variant="label" tone="muted">
+                  Bouncer, armed gunman or a team
+                </Text>
+              </View>
+              <ArrowRight color={colors.blue} size={iconSize.md} strokeWidth={iconStroke} />
+            </Pressable>
+          </View>
         </View>
 
         {active && activeStaff ? (
@@ -160,6 +197,7 @@ const styles = StyleSheet.create({
   services: { gap: space.md },
   servicesRow: { flexDirection: 'row', alignItems: 'stretch' },
   flex1: { flex: 1 },
+  side: { gap: space.md },
   serviceMain: { backgroundColor: colors.navy, borderRadius: radius.xl, gap: space.xl },
   arrow: {
     position: 'absolute',

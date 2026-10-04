@@ -12,6 +12,8 @@ export type BookingDraft = {
   post: { address: string; point: string; instructions: string };
   personnel: number;
   staffId?: string;
+  // Rental car from the partner fleet (service 'rental').
+  carId?: string;
   start: 'now' | 'later';
   // 'YYYY-MM-DD' and 'HH:mm', used when start is 'later'.
   date: string;

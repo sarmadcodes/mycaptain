@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { Check, ChevronDown, type LucideIcon } from 'lucide-react-native';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { FlatList, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -20,6 +20,8 @@ type SelectProps<T> = {
   icon?: LucideIcon;
   error?: string;
   sheetTitle?: string;
+  // Replace the default field with a custom button (e.g. a compact pill).
+  trigger?: (selectedLabel: string | undefined) => ReactNode;
 };
 
 // Dropdown field. Opens a sheet from the bottom on phones and a centred dialog on wide screens.
@@ -32,28 +34,47 @@ export function Select<T extends string | number>({
   icon: Icon,
   error,
   sheetTitle,
+  trigger,
 }: SelectProps<T>) {
   const [open, setOpen] = useState(false);
   const { tablet } = useResponsive();
   const selected = options.find((o) => o.value === value);
-  const initialIndex = Math.max(0, options.findIndex((o) => o.value === value));
+  const initialIndex = Math.max(
+    0,
+    options.findIndex((o) => o.value === value),
+  );
 
   return (
-    <View style={styles.block}>
-      <Text variant="label" tone="muted">
-        {label}
-      </Text>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`${label}: ${selected?.label ?? placeholder}`}
-        onPress={() => setOpen(true)}
-        style={({ pressed }) => [styles.field, error && { borderColor: colors.red }, pressed && { backgroundColor: colors.surface }]}>
-        {Icon ? <Icon color={colors.blue} size={iconSize.md} strokeWidth={iconStroke} /> : null}
-        <Text style={[styles.value, !selected && { color: colors.textFaint }]} numberOfLines={1}>
-          {selected?.label ?? placeholder}
+    <View style={trigger ? undefined : styles.block}>
+      {trigger ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`: ${selected?.label ?? placeholder}`}
+          onPress={() => setOpen(true)}>
+          {trigger(selected?.label)}
+        </Pressable>
+      ) : (
+        <Text variant="label" tone="muted">
+          {label}
         </Text>
-        <ChevronDown color={colors.textMuted} size={iconSize.md} strokeWidth={iconStroke} />
-      </Pressable>
+      )}
+      {trigger ? null : (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${label}: ${selected?.label ?? placeholder}`}
+          onPress={() => setOpen(true)}
+          style={({ pressed }) => [
+            styles.field,
+            error && { borderColor: colors.red },
+            pressed && { backgroundColor: colors.surface },
+          ]}>
+          {Icon ? <Icon color={colors.blue} size={iconSize.md} strokeWidth={iconStroke} /> : null}
+          <Text style={[styles.value, !selected && { color: colors.textFaint }]} numberOfLines={1}>
+            {selected?.label ?? placeholder}
+          </Text>
+          <ChevronDown color={colors.textMuted} size={iconSize.md} strokeWidth={iconStroke} />
+        </Pressable>
+      )}
       {error ? (
         <Text variant="caption" tone="danger">
           {error}
@@ -90,7 +111,10 @@ export function Select<T extends string | number>({
                     <View style={{ flex: 1 }}>
                       <Text
                         variant="body"
-                        style={[isSel && { fontFamily: fonts.semibold, color: colors.blue }, item.disabled && { color: colors.textFaint }]}>
+                        style={[
+                          isSel && { fontFamily: fonts.semibold, color: colors.blue },
+                          item.disabled && { color: colors.textFaint },
+                        ]}>
                         {item.label}
                       </Text>
                       {item.hint ? (
@@ -137,7 +161,14 @@ const styles = StyleSheet.create({
     paddingBottom: space.md,
   },
   dialog: { width: 420, maxWidth: '100%', borderRadius: radius.xl, paddingTop: space.md },
-  grabber: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border, marginVertical: space.sm },
+  grabber: {
+    alignSelf: 'center',
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.border,
+    marginVertical: space.sm,
+  },
   sheetTitle: { paddingHorizontal: space.md, paddingVertical: space.md },
   row: {
     height: ROW,

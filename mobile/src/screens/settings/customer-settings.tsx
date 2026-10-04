@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { CheckCircle2, CreditCard, Plus, Smartphone } from 'lucide-react-native';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -5,6 +6,7 @@ import { StyleSheet, View } from 'react-native';
 import { Badge, Button, Card, DetailRow, Header, ListRow, Screen, Section, Text, TextField } from '@/components/ui';
 import { SwitchRow } from '@/components/ui/switch-row';
 import { formatPKR } from '@/features/booking/pricing';
+import { useBookingDraft } from '@/features/booking/store';
 import { useAuth } from '@/stores/auth';
 import { colors, space } from '@/theme';
 
@@ -24,7 +26,9 @@ export function PersonalDetails() {
   };
 
   return (
-    <Screen header={<Header title="Personal details" />} footer={<Button label={saved ? 'Saved' : 'Save changes'} onPress={save} />}>
+    <Screen
+      header={<Header title="Personal details" />}
+      footer={<Button label={saved ? 'Saved' : 'Save changes'} onPress={save} />}>
       <View style={styles.form}>
         <TextField label="Full name" value={name} onChangeText={(t) => (setName(t), setSaved(false))} autoCapitalize="words" />
         <TextField label="Mobile number" value={user.phone} editable={false} hint="To change your number, contact support." />
@@ -68,7 +72,7 @@ export function PaymentMethods() {
           label="Add payment method"
           variant="secondary"
           icon={<Plus color={colors.text} size={20} strokeWidth={1.75} />}
-          onPress={() => {}}
+          onPress={() => router.push('/settings/add-payment')}
         />
         <Text variant="caption" tone="muted">
           Card details are handled by the payment provider. My Captain never stores your full card number.
@@ -129,7 +133,23 @@ export function Contracts() {
             <DetailRow label="Monthly amount" value={formatPKR(187200)} strong />
           </View>
         </Card>
-        <Button label="Renew or change terms" variant="secondary" onPress={() => {}} />
+        <Button
+          label="Renew or change terms"
+          variant="secondary"
+          onPress={() => {
+            // Pre-fill a driver contract for the same captain; the customer adjusts it on the schedule screen.
+            useBookingDraft.getState().reset('driver');
+            useBookingDraft
+              .getState()
+              .set({
+                plan: 'contract',
+                start: 'later',
+                staffId: 'd1',
+                vehicle: { class: 'suv', makeModel: 'Toyota Fortuner', engine: '2700+', transmission: 'automatic', notes: '' },
+              });
+            router.push('/book/schedule');
+          }}
+        />
         <Section title="Replacement history">
           <ListRow icon={CheckCircle2} title="Bilal Khan covered 2 days" subtitle="18 to 19 Sep, Ahmed on leave" />
         </Section>
@@ -144,7 +164,12 @@ export function NotificationSettings() {
   return (
     <Screen header={<Header title="Notifications" />}>
       <SwitchRow title="Duty updates" subtitle="Check-ins, breaks and duty end" value={prefs.duty} onChange={toggle('duty')} />
-      <SwitchRow title="Arrival alerts" subtitle="When your captain is close" value={prefs.arrival} onChange={toggle('arrival')} />
+      <SwitchRow
+        title="Arrival alerts"
+        subtitle="When your captain is close"
+        value={prefs.arrival}
+        onChange={toggle('arrival')}
+      />
       <SwitchRow title="Payments and invoices" value={prefs.payments} onChange={toggle('payments')} />
       <SwitchRow title="SMS for urgent cases" value={prefs.sms} onChange={toggle('sms')} />
       <SwitchRow title="Offers and news" value={prefs.offers} onChange={toggle('offers')} />

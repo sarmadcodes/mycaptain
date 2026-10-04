@@ -68,7 +68,7 @@ export function LiveDuty() {
 
           <View style={styles.actions}>
             <Action icon={Phone} label="Call" onPress={() => Linking.openURL('tel:+923000000000')} />
-            <Action icon={MessageCircle} label="Message" onPress={() => {}} />
+            <Action icon={MessageCircle} label="Message" onPress={() => router.push(`/chat/${booking.id}`)} />
             <Action icon={Clock} label="Extend" onPress={() => router.push('/book/schedule')} />
           </View>
         </Card>

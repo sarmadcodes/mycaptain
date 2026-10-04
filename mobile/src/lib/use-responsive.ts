@@ -20,8 +20,7 @@ export function useResponsive() {
   const contentWidth = Math.min(width, maxWidth) - gutter * 2;
 
   // Pixel width of one column in a grid, accounting for the gaps between columns.
-  const columnWidth = (cols: number, gap: number) =>
-    Math.floor((contentWidth - gap * (cols - 1)) / cols);
+  const columnWidth = (cols: number, gap: number) => Math.floor((contentWidth - gap * (cols - 1)) / cols);
 
   // Use as ScrollView contentContainerStyle: centred, capped width, scaled padding.
   const content = {

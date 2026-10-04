@@ -41,10 +41,15 @@ export async function verifyOtp(params: {
 export async function staffSignIn(params: { phone: string; password: string }): Promise<{ token: string; user: User }> {
   await wait(900);
   if (params.password.length < 6) throw new AuthError('Phone number or password is incorrect.');
-  // Mock: passwords starting with "g" sign in as a guard, anything else as a driver.
-  const role: Role = params.password.startsWith('g') ? 'guard' : 'driver';
+  // Mock: passwords starting with "admin" sign in as operations admin, "g" as a guard, anything else as a driver.
+  const role: Role = params.password.startsWith('admin') ? 'admin' : params.password.startsWith('g') ? 'guard' : 'driver';
   return {
     token: `mock-${role}-token`,
-    user: { id: `stf_${role}`, name: role === 'guard' ? 'Usman Ali' : 'Ahmed Raza', phone: toE164(params.phone), role },
+    user: {
+      id: `stf_${role}`,
+      name: role === 'admin' ? 'Sara Ahmed' : role === 'guard' ? 'Usman Ali' : 'Ahmed Raza',
+      phone: toE164(params.phone),
+      role,
+    },
   };
 }

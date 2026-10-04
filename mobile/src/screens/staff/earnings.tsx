@@ -21,9 +21,7 @@ export function StaffEarnings() {
             <Text variant="label" style={{ color: '#B7C2D6' }}>
               This week
             </Text>
-            <Text style={[styles.amount, { fontSize: r.compact ? 28 : r.tablet ? 40 : 34 }]}>
-              {formatPKR(earnings.week)}
-            </Text>
+            <Text style={[styles.amount, { fontSize: r.compact ? 28 : r.tablet ? 40 : 34 }]}>{formatPKR(earnings.week)}</Text>
             <View style={styles.stats}>
               <Text variant="label" tone="inverse">
                 {earnings.duties} duties

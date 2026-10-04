@@ -28,7 +28,11 @@ export function ReportForm({ title, intro, urgentNote, reasonLabel, reasons, ext
   const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle');
 
   const pick = async () => {
-    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images', 'videos'], allowsMultipleSelection: true, quality: 0.7 });
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images', 'videos'],
+      allowsMultipleSelection: true,
+      quality: 0.7,
+    });
     if (!res.canceled) setPhotos((p) => [...p, ...res.assets.map((a) => a.uri)].slice(0, 6));
   };
 
@@ -56,7 +60,9 @@ export function ReportForm({ title, intro, urgentNote, reasonLabel, reasons, ext
   }
 
   return (
-    <Screen header={<Header title={title} />} footer={<Button label={submitLabel} loading={state === 'sending'} onPress={submit} />}>
+    <Screen
+      header={<Header title={title} />}
+      footer={<Button label={submitLabel} loading={state === 'sending'} onPress={submit} />}>
       <View style={styles.form}>
         <Text tone="muted">{intro}</Text>
         {urgentNote ? (

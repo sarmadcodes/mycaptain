@@ -21,7 +21,9 @@ export function Availability() {
   };
 
   return (
-    <Screen header={<Header title="Availability" />} footer={<Button label={saved ? 'Saved' : 'Save availability'} onPress={() => setSaved(true)} />}>
+    <Screen
+      header={<Header title="Availability" />}
+      footer={<Button label={saved ? 'Saved' : 'Save availability'} onPress={() => setSaved(true)} />}>
       <View style={styles.form}>
         <SwitchRow
           title="Available for new assignments"
@@ -33,7 +35,11 @@ export function Availability() {
           <View style={styles.days}>
             {DAYS.map((d) => (
               <View key={d}>
-                <ChipGroup value={days.includes(d) ? d : undefined} onChange={() => toggle(d)} options={[{ label: d, value: d }]} />
+                <ChipGroup
+                  value={days.includes(d) ? d : undefined}
+                  onChange={() => toggle(d)}
+                  options={[{ label: d, value: d }]}
+                />
               </View>
             ))}
           </View>

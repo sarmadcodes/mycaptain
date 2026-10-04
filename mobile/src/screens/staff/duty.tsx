@@ -52,7 +52,12 @@ export function StaffDuty() {
 
         <View style={[styles.body, split && styles.bodySplit, { gap: split ? space.xxl : gap }]}>
           <View style={[{ gap }, split && styles.col]}>
-            <LiveMap height={mapHeight} target={KARACHI} staff={phase === 'on_duty' ? KARACHI : undefined} geofenceMeters={isGuard ? 60 : undefined} />
+            <LiveMap
+              height={mapHeight}
+              target={KARACHI}
+              staff={phase === 'on_duty' ? KARACHI : undefined}
+              geofenceMeters={isGuard ? 60 : undefined}
+            />
 
             {phase === 'on_duty' ? (
               <View style={styles.timer}>
@@ -103,7 +108,9 @@ export function StaffDuty() {
 
             {phase === 'on_duty' ? (
               <View style={{ gap: space.md }}>
-                {isGuard ? <Button label="Complete scheduled check-in" variant="secondary" onPress={() => setLastCheck(now())} /> : null}
+                {isGuard ? (
+                  <Button label="Complete scheduled check-in" variant="secondary" onPress={() => setLastCheck(now())} />
+                ) : null}
                 <Button
                   label={onBreak ? 'End break' : 'Start break'}
                   variant="secondary"
@@ -123,7 +130,12 @@ export function StaffDuty() {
               </Card>
             ) : null}
 
-            <ListRow icon={AlertTriangle} title="Report a problem" subtitle="Accident, breakdown or urgent help" onPress={() => router.push('/incident')} />
+            <ListRow
+              icon={AlertTriangle}
+              title="Report a problem"
+              subtitle="Accident, breakdown or urgent help"
+              onPress={() => router.push('/incident')}
+            />
           </View>
         </View>
       </ScrollView>

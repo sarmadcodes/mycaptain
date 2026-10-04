@@ -21,13 +21,7 @@ export function StaffList({ kind }: { kind: 'driver' | 'security' }) {
     <Screen header={<Header title={title} />}>
       <View style={styles.list}>
         {list.map((s) => (
-          <StaffCard
-            key={s.id}
-            staff={s}
-            onPress={() =>
-              router.push(`/book/driver/${s.id}`)
-            }
-          />
+          <StaffCard key={s.id} staff={s} onPress={() => router.push(`/book/driver/${s.id}`)} />
         ))}
       </View>
       <Text variant="caption" tone="muted" style={styles.note}>

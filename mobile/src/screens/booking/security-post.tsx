@@ -42,9 +42,9 @@ export function SecurityPostStep() {
           value={post.point}
           onChangeText={(t) => patch({ point: t })}
         />
-        {service !== 'gunman' ? (
-          <Section title={service === 'team' ? 'Team size' : 'Guards needed'}>
-            <Stepper value={personnel} min={service === 'team' ? 2 : 1} max={10} onChange={(v) => set({ personnel: v })} />
+        {service === 'guard' ? (
+          <Section title="Guards needed">
+            <Stepper value={personnel} min={1} max={20} onChange={(v) => set({ personnel: v })} />
           </Section>
         ) : null}
         <TextField

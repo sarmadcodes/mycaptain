@@ -51,7 +51,9 @@ export function Verify() {
   };
 
   return (
-    <Screen header={<Header />} footer={<Button label="Verify" loading={loading} disabled={code.length !== 6} onPress={() => submit()} />}>
+    <Screen
+      header={<Header />}
+      footer={<Button label="Verify" loading={loading} disabled={code.length !== 6} onPress={() => submit()} />}>
       <View style={styles.intro}>
         <Text variant="title">Enter the code</Text>
         <Text tone="muted">Sent by SMS to +92 {formatPkPhone(params.phone ?? '')}</Text>
