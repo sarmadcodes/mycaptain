@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar, Badge, Card, ListRow, Section, Text } from '@/components/ui';
 import { useBookingDraft } from '@/features/booking/store';
 import { bookings, findStaff, statusLabel } from '@/lib/mock-data';
+import { useResponsive } from '@/lib/use-responsive';
 import { useAuth } from '@/stores/auth';
 import { colors, iconSize, iconStroke, radius, space } from '@/theme';
 import type { ServiceType } from '@/types';
@@ -18,6 +19,7 @@ function greeting() {
 }
 
 export function CustomerHome() {
+  const r = useResponsive();
   const name = useAuth((s) => s.user?.name.split(' ')[0] ?? '');
   const reset = useBookingDraft((s) => s.reset);
   const active = bookings.find((b) => b.status === 'on_duty');
@@ -29,11 +31,19 @@ export function CustomerHome() {
     router.push(path);
   };
 
+  // Two service cards sit side by side on tablets, stacked on phones.
+  const servicesRow = r.tablet;
+  // Upcoming rows become a grid on wide screens.
+  const upcomingCols = r.desktop ? 2 : r.tablet ? 2 : 1;
+  const upcomingWidth = r.columnWidth(upcomingCols, space.md);
+
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={[styles.content, r.content, { gap: r.compact ? space.xl : space.xxl }]}
+        showsVerticalScrollIndicator={false}>
         <View style={styles.top}>
-          <View style={{ gap: 2 }}>
+          <View style={styles.greetingWrap}>
             <Text variant="label" tone="muted">
               {greeting()}
             </Text>
@@ -50,12 +60,17 @@ export function CustomerHome() {
           What do you need today?
         </Text>
 
-        <View style={styles.services}>
+        <View style={[styles.services, servicesRow && styles.servicesRow]}>
           <Pressable
             onPress={() => start('driver', '/book/driver/vehicle')}
-            style={({ pressed }) => [styles.serviceMain, pressed && styles.pressed]}>
+            style={({ pressed }) => [
+              styles.serviceMain,
+              { minHeight: r.compact ? 160 : r.tablet ? 220 : 190, padding: r.compact ? space.lg : space.xl },
+              servicesRow && styles.flex1,
+              pressed && styles.pressed,
+            ]}>
             <Car color={colors.onPrimary} size={28} strokeWidth={iconStroke} />
-            <View style={{ gap: 4 }}>
+            <View style={{ gap: 4, paddingRight: space.xxxl }}>
               <Text variant="title" tone="inverse">
                 Hire a driver
               </Text>
@@ -63,15 +78,20 @@ export function CustomerHome() {
                 For your own car. Hourly, daily or contract.
               </Text>
             </View>
-            <View style={styles.arrow}>
+            <View style={[styles.arrow, r.compact && { right: space.lg, top: space.lg }]}>
               <ArrowRight color={colors.navy} size={iconSize.md} strokeWidth={iconStroke} />
             </View>
           </Pressable>
           <Pressable
             onPress={() => start('guard', '/book/security/type')}
-            style={({ pressed }) => [styles.serviceAlt, pressed && styles.pressed]}>
+            style={({ pressed }) => [
+              styles.serviceAlt,
+              { padding: r.compact ? space.lg : space.xl },
+              servicesRow && styles.flex1,
+              pressed && styles.pressed,
+            ]}>
             <ShieldCheck color={colors.blue} size={26} strokeWidth={iconStroke} />
-            <View style={{ flex: 1, gap: 2 }}>
+            <View style={styles.altText}>
               <Text variant="heading">Book security</Text>
               <Text variant="label" tone="muted">
                 Guard, armed gunman or a team
@@ -86,7 +106,7 @@ export function CustomerHome() {
             <Pressable onPress={() => router.push(`/booking/${active.id}`)}>
               <Card style={styles.active}>
                 <Avatar name={activeStaff.name} />
-                <View style={{ flex: 1, gap: 4 }}>
+                <View style={styles.activeText}>
                   <Badge label={statusLabel[active.status].label} tone={statusLabel[active.status].tone} />
                   <Text variant="heading">{activeStaff.name}</Text>
                   <Text variant="label" tone="muted">
@@ -103,15 +123,18 @@ export function CustomerHome() {
 
         {upcoming.length ? (
           <Section title="Upcoming" action={{ label: 'See all', onPress: () => router.push('/bookings') }}>
-            {upcoming.map((b) => (
-              <ListRow
-                key={b.id}
-                icon={b.service === 'driver' ? Car : ShieldCheck}
-                title={b.title}
-                subtitle={`${b.when}, ${b.location}`}
-                onPress={() => router.push(`/booking/${b.id}`)}
-              />
-            ))}
+            <View style={styles.grid}>
+              {upcoming.map((b) => (
+                <View key={b.id} style={{ width: upcomingCols === 1 ? '100%' : upcomingWidth }}>
+                  <ListRow
+                    icon={b.service === 'driver' ? Car : ShieldCheck}
+                    title={b.title}
+                    subtitle={`${b.when}, ${b.location}`}
+                    onPress={() => router.push(`/booking/${b.id}`)}
+                  />
+                </View>
+              ))}
+            </View>
           </Section>
         ) : null}
       </ScrollView>
@@ -121,8 +144,9 @@ export function CustomerHome() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: space.xl, gap: space.xxl, paddingBottom: space.xxxl },
-  top: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  content: { paddingBottom: space.xxxl },
+  top: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: space.md },
+  greetingWrap: { flex: 1, minWidth: 0, gap: 2 },
   city: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -134,7 +158,9 @@ const styles = StyleSheet.create({
   },
   headline: { marginBottom: -space.md },
   services: { gap: space.md },
-  serviceMain: { backgroundColor: colors.navy, borderRadius: radius.xl, padding: space.xl, gap: space.xl, minHeight: 190 },
+  servicesRow: { flexDirection: 'row', alignItems: 'stretch' },
+  flex1: { flex: 1 },
+  serviceMain: { backgroundColor: colors.navy, borderRadius: radius.xl, gap: space.xl },
   arrow: {
     position: 'absolute',
     right: space.xl,
@@ -152,8 +178,10 @@ const styles = StyleSheet.create({
     gap: space.lg,
     backgroundColor: colors.paleBlue,
     borderRadius: radius.xl,
-    padding: space.xl,
   },
+  altText: { flex: 1, minWidth: 0, gap: 2 },
   pressed: { transform: [{ scale: 0.99 }], opacity: 0.95 },
   active: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  activeText: { flex: 1, minWidth: 0, gap: 4 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md },
 });

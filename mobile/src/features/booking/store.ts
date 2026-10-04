@@ -2,6 +2,7 @@ import { create } from 'zustand';
 
 import type { VehicleClass } from '@/lib/mock-data';
 import type { ServiceType } from '@/types';
+import { firstOpenTime, today } from '@/utils/datetime';
 
 export type Plan = 'hourly' | 'daily' | 'monthly' | 'contract';
 
@@ -12,7 +13,8 @@ export type BookingDraft = {
   personnel: number;
   staffId?: string;
   start: 'now' | 'later';
-  day: 'today' | 'tomorrow';
+  // 'YYYY-MM-DD' and 'HH:mm', used when start is 'later'.
+  date: string;
   time: string;
   plan: Plan;
   hours: number;
@@ -27,8 +29,8 @@ const initial: BookingDraft = {
   post: { address: '', point: '', instructions: '' },
   personnel: 1,
   start: 'now',
-  day: 'today',
-  time: '5:00 PM',
+  date: today(),
+  time: firstOpenTime(today()),
   plan: 'hourly',
   hours: 4,
   days: 1,
@@ -45,5 +47,6 @@ type DraftStore = BookingDraft & {
 export const useBookingDraft = create<DraftStore>((set) => ({
   ...initial,
   set: (patch) => set(patch),
-  reset: (service) => set({ ...initial, service, personnel: service === 'team' ? 3 : 1 }),
+  reset: (service) =>
+    set({ ...initial, date: today(), time: firstOpenTime(today()), service, personnel: service === 'team' ? 3 : 1 }),
 }));

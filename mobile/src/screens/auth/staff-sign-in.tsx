@@ -39,7 +39,7 @@ export function StaffSignIn() {
       footer={<Button label="Sign in" loading={formState.isSubmitting} onPress={onSubmit} />}>
       <View style={styles.intro}>
         <Text variant="title">Staff sign in</Text>
-        <Text tone="muted">For drivers and security personnel working with My Captain.</Text>
+        <Text tone="muted">For drivers and guards employed by a My Captain partner company.</Text>
       </View>
 
       <View style={styles.fields}>
@@ -89,7 +89,7 @@ export function StaffSignIn() {
       <Card tinted style={styles.note}>
         <Info color={colors.blue} size={iconSize.md} strokeWidth={iconStroke} />
         <Text variant="label" tone="muted" style={styles.noteText}>
-          Staff accounts are created by My Captain operations. Contact your supervisor if you cannot sign in.
+          Your company creates your account on the My Captain partner portal. Ask your company supervisor if you cannot sign in.
         </Text>
       </Card>
     </Screen>

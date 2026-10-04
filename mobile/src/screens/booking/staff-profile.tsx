@@ -49,6 +49,7 @@ export function StaffProfileStep() {
 
       <Card style={{ gap: 0 }}>
         <DetailRow label="Role" value={kindLabel[staff.kind]} />
+        <DetailRow label="Company" value={staff.company} />
         <DetailRow label="Experience" value={`${staff.years} years`} />
         <DetailRow label="Speciality" value={staff.specialty} />
         <DetailRow label="Languages" value={staff.languages} />

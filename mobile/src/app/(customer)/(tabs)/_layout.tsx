@@ -1,12 +1,13 @@
 import { Tabs } from 'expo-router';
 import { CalendarDays, House, LifeBuoy, UserRound } from 'lucide-react-native';
 
-import { tabBarOptions } from '@/components/tab-bar-options';
+import { useTabBarOptions } from '@/components/tab-bar-options';
 import { iconSize, iconStroke } from '@/theme';
 
 export default function CustomerTabs() {
+  const screenOptions = useTabBarOptions();
   return (
-    <Tabs screenOptions={tabBarOptions}>
+    <Tabs screenOptions={screenOptions}>
       <Tabs.Screen
         name="home"
         options={{

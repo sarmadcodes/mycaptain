@@ -12,22 +12,26 @@ export type StaffProfile = {
   specialty: string;
   languages: string;
   eta: string;
+  // Registered partner company that employs this captain.
+  company: string;
   classes?: VehicleClass[];
 };
 
 export const drivers: StaffProfile[] = [
-  { id: 'd1', name: 'Ahmed Raza', kind: 'driver', rating: 4.9, years: 8, specialty: 'SUV specialist', languages: 'Urdu, English', eta: '18 min', classes: ['suv', 'sedan'] },
-  { id: 'd2', name: 'Bilal Khan', kind: 'driver', rating: 4.8, years: 6, specialty: 'Luxury and executive cars', languages: 'Urdu, English', eta: '30 min', classes: ['luxury', 'suv', 'sedan'] },
-  { id: 'd3', name: 'Farhan Siddiqui', kind: 'driver', rating: 4.9, years: 10, specialty: 'Sedans, manual and automatic', languages: 'Urdu, Sindhi', eta: '25 min', classes: ['sedan', 'small'] },
-  { id: 'd4', name: 'Naveed Akhtar', kind: 'driver', rating: 4.7, years: 4, specialty: 'City driving, small cars', languages: 'Urdu', eta: '15 min', classes: ['small', 'sedan'] },
+  { id: 'd1', company: 'Karachi Chauffeurs', name: 'Ahmed Raza', kind: 'driver', rating: 4.9, years: 8, specialty: 'SUV specialist', languages: 'Urdu, English', eta: '18 min', classes: ['suv', 'sedan'] },
+  { id: 'd2', company: 'Elite Drive Services', name: 'Bilal Khan', kind: 'driver', rating: 4.8, years: 6, specialty: 'Luxury and executive cars', languages: 'Urdu, English', eta: '30 min', classes: ['luxury', 'suv', 'sedan'] },
+  { id: 'd3', company: 'Karachi Chauffeurs', name: 'Farhan Siddiqui', kind: 'driver', rating: 4.9, years: 10, specialty: 'Sedans, manual and automatic', languages: 'Urdu, Sindhi', eta: '25 min', classes: ['sedan', 'small'] },
+  { id: 'd4', company: 'CityLink Drivers', name: 'Naveed Akhtar', kind: 'driver', rating: 4.7, years: 4, specialty: 'City driving, small cars', languages: 'Urdu', eta: '15 min', classes: ['small', 'sedan'] },
 ];
 
 export const securityStaff: StaffProfile[] = [
-  { id: 'g1', name: 'Usman Ali', kind: 'guard', rating: 4.8, years: 7, specialty: 'Residential and site security', languages: 'Urdu, Punjabi', eta: '40 min' },
-  { id: 'g2', name: 'Kashif Mehmood', kind: 'guard', rating: 4.7, years: 4, specialty: 'Office and reception', languages: 'Urdu, English', eta: '35 min' },
-  { id: 'g3', name: 'Imran Shah', kind: 'gunman', rating: 4.9, years: 5, specialty: 'Event and VIP protection', languages: 'Urdu, Pashto', eta: '50 min' },
-  { id: 'g4', name: 'Zahid Hussain', kind: 'gunman', rating: 4.8, years: 9, specialty: 'Armed site security', languages: 'Urdu, Punjabi', eta: '45 min' },
+  { id: 'g1', company: 'Shield Force Security', name: 'Usman Ali', kind: 'guard', rating: 4.8, years: 7, specialty: 'Residential and site security', languages: 'Urdu, Punjabi', eta: '40 min' },
+  { id: 'g2', company: 'Shield Force Security', name: 'Kashif Mehmood', kind: 'guard', rating: 4.7, years: 4, specialty: 'Office and reception', languages: 'Urdu, English', eta: '35 min' },
+  { id: 'g3', company: 'Falcon Guard Services', name: 'Imran Shah', kind: 'gunman', rating: 4.9, years: 5, specialty: 'Event and VIP protection', languages: 'Urdu, Pashto', eta: '50 min' },
+  { id: 'g4', company: 'Falcon Guard Services', name: 'Zahid Hussain', kind: 'gunman', rating: 4.8, years: 9, specialty: 'Armed site security', languages: 'Urdu, Punjabi', eta: '45 min' },
 ];
+
+export const PARTNER_PORTAL_URL = 'https://partners.mycaptain.pk';
 
 export const findStaff = (id?: string) => [...drivers, ...securityStaff].find((s) => s.id === id);
 

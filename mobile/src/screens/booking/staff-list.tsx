@@ -48,6 +48,9 @@ function StaffCard({ staff, onPress }: { staff: StaffProfile; onPress: () => voi
             <Text variant="label" tone="muted">
               {staff.specialty}, {staff.years} yrs
             </Text>
+            <Text variant="caption" tone="muted">
+              {staff.company}
+            </Text>
             <Text variant="label" tone="accent">
               Available in {staff.eta}
             </Text>

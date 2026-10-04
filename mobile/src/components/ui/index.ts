@@ -14,3 +14,5 @@ export { SelectCard } from './select-card';
 export { Stepper } from './stepper';
 export { Text } from './text';
 export { TextField } from './text-field';
+export { Select, type SelectOption } from './select';
+export { Segmented } from './segmented';

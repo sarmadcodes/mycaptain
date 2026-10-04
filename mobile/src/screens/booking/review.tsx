@@ -6,6 +6,7 @@ import { durationLabel, formatPKR, quote } from '@/features/booking/pricing';
 import { useBookingDraft } from '@/features/booking/store';
 import { findStaff } from '@/lib/mock-data';
 import { colors, space } from '@/theme';
+import { formatDate, formatTime } from '@/utils/datetime';
 
 const serviceName = { driver: 'Driver', guard: 'Security guard', gunman: 'Armed gunman', team: 'Security team' };
 const vehicleName = { small: 'Small car', sedan: 'Sedan', suv: 'SUV', luxury: 'Luxury' };
@@ -14,7 +15,8 @@ export function ReviewStep() {
   const d = useBookingDraft();
   const staff = findStaff(d.staffId);
   const price = quote(d);
-  const when = d.start === 'now' ? 'Now, within 30 minutes' : `${d.day === 'today' ? 'Today' : 'Tomorrow'}, ${d.time}`;
+  const scheduled = d.start === 'later' || d.plan === 'monthly' || d.plan === 'contract';
+  const when = scheduled ? `${formatDate(d.date)}, ${formatTime(d.time)}` : 'Now, within 30 minutes';
 
   return (
     <Screen
