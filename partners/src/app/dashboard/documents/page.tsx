@@ -40,9 +40,9 @@ export default function DocumentsPage() {
                   <Badge tone={doc.status === 'verified' ? 'green' : doc.status === 'rejected' ? 'red' : 'amber'}>
                     {doc.status === 'verified' ? 'Verified' : doc.status === 'rejected' ? 'Rejected' : 'In review'}
                   </Badge>
-                ) : (
+                ) : k.required || k.securityOnly ? (
                   <Badge tone="red">Missing</Badge>
-                )}
+                ) : null}
               </div>
               {doc?.note ? <p className="text-sm text-danger">{doc.note}</p> : null}
               <div className="flex gap-2">

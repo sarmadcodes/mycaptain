@@ -124,7 +124,7 @@ export default function BookingPage({ params }: PageProps<'/dashboard/bookings/[
                         <label
                           key={s.id}
                           className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-sm transition ${on ? 'border-blue bg-pale' : 'border-line hover:bg-surface'}`}>
-                          <input type="checkbox" checked={on} onChange={() => toggle(s.id, n.kind)} className="size-4 accent-[var(--blue)]" />
+                          <input type="checkbox" aria-label={s.name} checked={on} onChange={() => toggle(s.id, n.kind)} className="size-4 accent-[var(--blue)]" />
                           <span className="flex-1 font-medium">{s.name}</span>
                           <span className="text-xs text-faint">{s.phone}</span>
                         </label>
