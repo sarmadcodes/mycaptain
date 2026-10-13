@@ -3,31 +3,36 @@ import { CarFront, Cog, Users } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { Badge, Header, Screen, Segmented, Text } from '@/components/ui';
+import { Badge, EmptyView, ErrorView, Header, LoadingView, Screen, Segmented, Text } from '@/components/ui';
+import { useCars } from '@/features/api';
 import { formatPKR } from '@/features/booking/pricing';
 import { useBookingDraft } from '@/features/booking/store';
-import { rentalCars, type RentalCar, type VehicleClass } from '@/lib/mock-data';
+import type { RentalCarApi as RentalCar } from '@/types/api';
 import { useResponsive } from '@/lib/use-responsive';
 import { colors, iconSize, iconStroke, radius, space } from '@/theme';
 
-type Filter = 'all' | VehicleClass;
+type Filter = 'all' | RentalCar['class'];
 
 export function RentalCars() {
   const { tablet } = useResponsive();
   const set = useBookingDraft((s) => s.set);
   const [filter, setFilter] = useState<Filter>('all');
-  const list = rentalCars.filter((c) => filter === 'all' || c.class === filter);
+  const { data, isLoading, error, refetch } = useCars();
+  const list = (data?.cars ?? []).filter((c) => filter === 'all' || c.class === filter);
 
   const pick = (car: RentalCar) => {
     set({
       service: 'rental',
       personnel: 1,
       carId: car.id,
+      carPerDay: car.perDay,
+      carName: car.name,
+      carCompany: car.companyName,
       vehicle: {
         class: car.class,
         makeModel: car.name,
         engine: '',
-        transmission: car.transmission === 'Automatic' ? 'automatic' : 'manual',
+        transmission: car.transmission,
         notes: '',
       },
     });
@@ -53,13 +58,25 @@ export function RentalCars() {
           { label: 'Luxury', value: 'luxury' },
         ]}
       />
-      <View style={[styles.grid, { marginTop: space.xl }]}>
-        {list.map((car) => (
-          <View key={car.id} style={{ width: tablet ? '48.5%' : '100%' }}>
-            <CarCard car={car} onPress={() => pick(car)} />
-          </View>
-        ))}
-      </View>
+      {isLoading ? (
+        <LoadingView />
+      ) : error ? (
+        <ErrorView error={error} onRetry={refetch} />
+      ) : !list.length ? (
+        <EmptyView
+          icon={CarFront}
+          title="No cars available"
+          body={filter === 'all' ? 'Partner fleets are being added. Check back soon.' : 'Try another category.'}
+        />
+      ) : (
+        <View style={[styles.grid, { marginTop: space.xl }]}>
+          {list.map((car) => (
+            <View key={car.id} style={{ width: tablet ? '48.5%' : '100%' }}>
+              <CarCard car={car} onPress={() => pick(car)} />
+            </View>
+          ))}
+        </View>
+      )}
     </Screen>
   );
 }
@@ -89,10 +106,10 @@ function CarCard({ car, onPress }: { car: RentalCar; onPress: () => void }) {
             </View>
             <View style={styles.meta}>
               <Meta icon={Users} text={`${car.seats} seats`} />
-              <Meta icon={Cog} text={car.transmission} />
+              <Meta icon={Cog} text={car.transmission === 'automatic' ? 'Automatic' : 'Manual'} />
             </View>
             <Text variant="label" tone="muted">
-              {car.features}. {car.company}
+              {[car.features, car.companyName].filter(Boolean).join('. ')}
             </Text>
           </View>
         </View>

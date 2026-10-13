@@ -8,11 +8,9 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Button, Card, Header, PhoneField, Screen, Text, TextField } from '@/components/ui';
 import { AuthError, staffSignIn } from '@/features/auth/api';
 import { staffSignInSchema, type StaffSignInForm } from '@/features/auth/schemas';
-import { useAuth } from '@/stores/auth';
 import { colors, iconSize, iconStroke, space } from '@/theme';
 
 export function StaffSignIn() {
-  const signIn = useAuth((s) => s.signIn);
   const [error, setError] = useState<string>();
   const [showPassword, setShowPassword] = useState(false);
   const { control, handleSubmit, formState } = useForm<StaffSignInForm>({
@@ -23,8 +21,7 @@ export function StaffSignIn() {
   const onSubmit = handleSubmit(async (values) => {
     setError(undefined);
     try {
-      const { token, user } = await staffSignIn(values);
-      await signIn(token, user);
+      await staffSignIn(values);
       router.replace('/');
     } catch (e) {
       setError(e instanceof AuthError ? e.message : 'Something went wrong. Try again.');

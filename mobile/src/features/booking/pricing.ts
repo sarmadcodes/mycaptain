@@ -1,4 +1,4 @@
-import { findCar, type VehicleClass } from '@/lib/mock-data';
+type VehicleClass = 'small' | 'sedan' | 'suv' | 'luxury';
 
 import type { BookingDraft } from './store';
 
@@ -24,7 +24,7 @@ const planDiscount = { hourly: 1, daily: 0.95, monthly: 0.85, contract: 0.8 };
 export function hourlyRate(d: BookingDraft) {
   if (d.service === 'driver') return driverRate[d.vehicle.class];
   // Rental day rate covers car and driver for 8 hours; fuel billed at actuals.
-  if (d.service === 'rental') return (findCar(d.carId)?.perDay ?? 9000) / 8;
+  if (d.service === 'rental') return (d.carPerDay ?? 9000) / 8;
   // Team = one armed lead plus the chosen number of guards.
   if (d.service === 'team') return securityRate.gunman + securityRate.guard * d.personnel;
   return securityRate[d.service] * d.personnel;

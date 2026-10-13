@@ -6,7 +6,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, Badge, Card, ListRow, Section, Select, Text } from '@/components/ui';
 import { useBookingDraft } from '@/features/booking/store';
-import { bookings, findStaff, statusLabel } from '@/lib/mock-data';
+import { useBookings } from '@/features/api';
+import { bookingTitle, isLive, isUpcoming, statusInfo, whenText } from '@/features/booking/labels';
 import { useResponsive } from '@/lib/use-responsive';
 import { useAuth } from '@/stores/auth';
 import { colors, iconSize, iconStroke, radius, space } from '@/theme';
@@ -23,9 +24,13 @@ export function CustomerHome() {
   const r = useResponsive();
   const name = useAuth((s) => s.user?.name.split(' ')[0] ?? '');
   const reset = useBookingDraft((s) => s.reset);
-  const active = bookings.find((b) => b.status === 'on_duty');
-  const upcoming = bookings.filter((b) => b.status === 'confirmed');
-  const activeStaff = findStaff(active?.staffId);
+  const { data } = useBookings();
+  const items = data?.items ?? [];
+  // Most urgent live booking first: on duty, arriving, confirmed, assigning.
+  const order = ['on_duty', 'arriving', 'confirmed', 'assigning'];
+  const active = items.filter((b) => isLive(b.status)).sort((a, b) => order.indexOf(a.status) - order.indexOf(b.status))[0];
+  const upcoming = items.filter((b) => isUpcoming(b.status) || (isLive(b.status) && b.id !== active?.id)).slice(0, 4);
+  const activeStaff = active?.staff[0];
 
   const [city, setCity] = useState('Karachi');
 
@@ -138,16 +143,16 @@ export function CustomerHome() {
           </View>
         </View>
 
-        {active && activeStaff ? (
+        {active ? (
           <Section title="Active now">
             <Pressable onPress={() => router.push(`/booking/${active.id}`)}>
               <Card style={styles.active}>
-                <Avatar name={activeStaff.name} />
+                <Avatar name={activeStaff?.name ?? 'My Captain'} />
                 <View style={styles.activeText}>
-                  <Badge label={statusLabel[active.status].label} tone={statusLabel[active.status].tone} />
-                  <Text variant="heading">{activeStaff.name}</Text>
+                  <Badge label={statusInfo[active.status].label} tone={statusInfo[active.status].tone} />
+                  <Text variant="heading">{activeStaff?.name ?? statusInfo[active.status].customer}</Text>
                   <Text variant="label" tone="muted">
-                    {active.title}, {active.location}
+                    {bookingTitle(active)}, {active.location.address}
                   </Text>
                 </View>
                 <Text variant="label" tone="accent">
@@ -164,9 +169,9 @@ export function CustomerHome() {
               {upcoming.map((b) => (
                 <View key={b.id} style={{ width: upcomingCols === 1 ? '100%' : upcomingWidth }}>
                   <ListRow
-                    icon={b.service === 'driver' ? Car : ShieldCheck}
-                    title={b.title}
-                    subtitle={`${b.when}, ${b.location}`}
+                    icon={b.service === 'driver' || b.service === 'rental' ? Car : ShieldCheck}
+                    title={bookingTitle(b)}
+                    subtitle={`${whenText(b.startAt)}, ${statusInfo[b.status].label}`}
                     onPress={() => router.push(`/booking/${b.id}`)}
                   />
                 </View>

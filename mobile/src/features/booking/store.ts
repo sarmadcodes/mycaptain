@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-import type { VehicleClass } from '@/lib/mock-data';
+type VehicleClass = 'small' | 'sedan' | 'suv' | 'luxury';
 import type { ServiceType } from '@/types';
 import { firstOpenTime, today } from '@/utils/datetime';
 
@@ -14,6 +14,12 @@ export type BookingDraft = {
   staffId?: string;
   // Rental car from the partner fleet (service 'rental').
   carId?: string;
+  // Day rate of the chosen car, for the on-screen estimate (the server prices the booking).
+  carPerDay?: number;
+  // Display names for the review screen.
+  staffName?: string;
+  carName?: string;
+  carCompany?: string;
   start: 'now' | 'later';
   // 'YYYY-MM-DD' and 'HH:mm', used when start is 'later'.
   date: string;

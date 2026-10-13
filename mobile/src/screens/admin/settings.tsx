@@ -1,46 +1,87 @@
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { Badge, Button, Card, DetailRow, Header, Screen, Text, TextField } from '@/components/ui';
+import { Badge, Button, Card, DetailRow, ErrorView, Header, LoadingView, Screen, Text, TextField } from '@/components/ui';
+import { useRates, useUpdateRates } from '@/features/api';
+import { errorMessage } from '@/services/api/client';
+import type { Rates } from '@/types/api';
 import { SwitchRow } from '@/components/ui/switch-row';
 import { formatPKR } from '@/features/booking/pricing';
-import { payouts, rateCard } from '@/lib/admin-data';
+import { payouts } from '@/lib/admin-data';
 import { space } from '@/theme';
 
+const FIELDS = [
+  { key: 'small', label: 'Driver, small car', unit: 'PKR per hour' },
+  { key: 'sedan', label: 'Driver, sedan', unit: 'PKR per hour' },
+  { key: 'suv', label: 'Driver, SUV', unit: 'PKR per hour' },
+  { key: 'luxury', label: 'Driver, luxury', unit: 'PKR per hour' },
+  { key: 'guard', label: 'Security guard (bouncer)', unit: 'PKR per hour' },
+  { key: 'gunman', label: 'Armed gunman', unit: 'PKR per hour' },
+  { key: 'fee', label: 'Platform fee', unit: 'percent' },
+  { key: 'rentalMin', label: 'Rental minimum', unit: 'hours' },
+] as const;
+type Key = (typeof FIELDS)[number]['key'];
+
 export function RateCards() {
-  const [rates, setRates] = useState(Object.fromEntries(rateCard.map((r) => [r.key, String(r.value)])));
+  const { data, isLoading, error, refetch } = useRates();
+  if (isLoading) return <Screen header={<Header title="Rate cards" />}><LoadingView /></Screen>;
+  if (error || !data) return <Screen header={<Header title="Rate cards" />}><ErrorView error={error} onRetry={refetch} /></Screen>;
+  return <RateForm rates={data.rates} />;
+}
+
+function RateForm({ rates }: { rates: Rates }) {
+  const update = useUpdateRates();
   const [saved, setSaved] = useState(false);
+  const [values, setValues] = useState<Record<Key, string>>({
+    small: String(rates.driverHourly.small),
+    sedan: String(rates.driverHourly.sedan),
+    suv: String(rates.driverHourly.suv),
+    luxury: String(rates.driverHourly.luxury),
+    guard: String(rates.guardHourly),
+    gunman: String(rates.gunmanHourly),
+    fee: String(rates.feePercent),
+    rentalMin: String(rates.rentalMinHours),
+  });
+  const n = (k: Key) => Number(values[k] || 0);
+
+  const save = async () => {
+    setSaved(false);
+    await update.mutateAsync({
+      ...rates,
+      driverHourly: { small: n('small'), sedan: n('sedan'), suv: n('suv'), luxury: n('luxury') },
+      guardHourly: n('guard'),
+      gunmanHourly: n('gunman'),
+      feePercent: n('fee'),
+      rentalMinHours: n('rentalMin'),
+    });
+    setSaved(true);
+  };
 
   return (
     <Screen
       header={<Header title="Rate cards" />}
-      footer={<Button label={saved ? 'Saved' : 'Save rates'} onPress={() => setSaved(true)} />}>
+      footer={
+        <>
+          {update.error ? (
+            <Text variant="caption" tone="danger">
+              {errorMessage(update.error)}
+            </Text>
+          ) : null}
+          <Button label={saved ? 'Saved' : 'Save rates'} loading={update.isPending} onPress={() => save().catch(() => {})} />
+        </>
+      }>
       <View style={{ gap: space.xl }}>
-        <Text tone="muted">Prices customers see in the app. Changes apply to new bookings only.</Text>
-        {rateCard.map((r) => (
+        <Text tone="muted">Prices customers see in the app. Changes apply to new bookings straight away.</Text>
+        {FIELDS.map((f) => (
           <TextField
-            key={r.key}
-            label={`${r.label}, ${r.unit}`}
+            key={f.key}
+            label={`${f.label}, ${f.unit}`}
             keyboardType="number-pad"
-            value={rates[r.key]}
+            value={values[f.key]}
             onChangeText={(t) => {
               setSaved(false);
-              setRates((s) => ({ ...s, [r.key]: t.replace(/\D/g, '') }));
+              setValues((s) => ({ ...s, [f.key]: t.replace(/\D/g, '') }));
             }}
-            prefix={
-              r.unit === 'percent' ? undefined : (
-                <Text variant="label" tone="muted">
-                  PKR
-                </Text>
-              )
-            }
-            suffix={
-              r.unit === 'percent' ? (
-                <Text variant="label" tone="muted">
-                  %
-                </Text>
-              ) : undefined
-            }
           />
         ))}
       </View>

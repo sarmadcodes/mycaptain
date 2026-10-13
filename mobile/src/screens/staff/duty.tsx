@@ -1,143 +1,113 @@
+import dayjs from 'dayjs';
 import { router } from 'expo-router';
-import { AlertTriangle, Coffee, MapPin, Radio } from 'lucide-react-native';
+import { AlertTriangle, Coffee, Radio } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { KARACHI, LiveMap } from '@/components/map/live-map';
-import { Badge, Button, Card, DetailRow, ListRow, Text } from '@/components/ui';
-import { driverAssignments, guardAssignments } from '@/lib/mock-data';
+import { Badge, Button, Card, DetailRow, EmptyView, ErrorView, ListRow, LoadingView, Text } from '@/components/ui';
+import { useBooking, useBookings } from '@/features/api';
+import { durationText, statusInfo, whenText } from '@/features/booking/labels';
 import { useResponsive } from '@/lib/use-responsive';
+import { useWatchBooking } from '@/services/socket';
 import { useAuth } from '@/stores/auth';
 import { colors, iconSize, iconStroke, space } from '@/theme';
 
-type Phase = 'ready' | 'arrived' | 'on_duty' | 'finished';
+import { DutyControls } from './duty-controls';
 
 const clock = (s: number) =>
-  [Math.floor(s / 3600), Math.floor((s % 3600) / 60), s % 60].map((n) => String(n).padStart(2, '0')).join(':');
+  [Math.floor(s / 3600), Math.floor((s % 3600) / 60), s % 60].map((n) => String(Math.max(0, n)).padStart(2, '0')).join(':');
 
-// TODO(backend): phase changes go to the API; location streams over the socket while on duty.
 export function StaffDuty() {
   const r = useResponsive();
-  const isGuard = useAuth((s) => s.user?.role === 'guard');
-  const a = (isGuard ? guardAssignments : driverAssignments)[0];
-  const [phase, setPhase] = useState<Phase>('ready');
+  const guard = useAuth((s) => s.user?.role === 'guard');
+  const list = useBookings(['confirmed', 'arriving', 'on_duty']);
+  // The duty to show: one in progress, otherwise the next confirmed job.
+  const current =
+    list.data?.items.find((b) => b.status === 'on_duty') ??
+    list.data?.items.find((b) => b.status === 'arriving') ??
+    [...(list.data?.items ?? [])].sort((a, b) => a.startAt.localeCompare(b.startAt))[0];
+  const detail = useBooking(current?.id);
+  useWatchBooking(current?.id);
+
   const [onBreak, setOnBreak] = useState(false);
-  const [seconds, setSeconds] = useState(0);
   const [lastCheck, setLastCheck] = useState<string>();
-
+  const [, tick] = useState(0);
+  const b = detail.data?.booking;
+  const live = b?.status === 'on_duty';
   useEffect(() => {
-    if (phase !== 'on_duty' || onBreak) return;
-    const t = setInterval(() => setSeconds((s) => s + 1), 1000);
+    if (!live || onBreak) return;
+    const t = setInterval(() => tick((n) => n + 1), 1000);
     return () => clearInterval(t);
-  }, [phase, onBreak]);
+  }, [live, onBreak]);
+  const startedAt = b ? [...b.history].reverse().find((h) => h.status === 'on_duty')?.at : undefined;
+  const seconds = startedAt ? dayjs().diff(dayjs(startedAt), 'second') : 0;
 
-  const now = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-  // Tablets and landscape: map + timer on the left, details and controls on the right.
   const split = r.tablet;
   const gap = r.compact ? space.lg : space.xl;
-  const mapHeight = r.compact ? 160 : r.tablet ? 320 : 200;
+  const now = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
-      <ScrollView contentContainerStyle={[styles.content, r.content, { gap }]} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={[styles.content, r.content, { gap }]}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={list.isRefetching} onRefresh={list.refetch} tintColor={colors.blue} />}>
         <View style={styles.head}>
           <Text variant="title">Duty</Text>
-          <Badge
-            label={phase === 'on_duty' ? (onBreak ? 'On break' : 'On duty') : phase === 'finished' ? 'Finished' : 'Not started'}
-            tone={phase === 'on_duty' ? (onBreak ? 'amber' : 'green') : 'neutral'}
-          />
+          {b ? <Badge label={live && onBreak ? 'On break' : statusInfo[b.status].label} tone={live ? (onBreak ? 'amber' : 'green') : 'blue'} /> : null}
         </View>
 
-        <View style={[styles.body, split && styles.bodySplit, { gap: split ? space.xxl : gap }]}>
-          <View style={[{ gap }, split && styles.col]}>
-            <LiveMap
-              height={mapHeight}
-              target={KARACHI}
-              staff={phase === 'on_duty' ? KARACHI : undefined}
-              geofenceMeters={isGuard ? 60 : undefined}
-            />
-
-            {phase === 'on_duty' ? (
-              <View style={styles.timer}>
-                <Text variant="caption" tone="muted">
-                  Time on duty
-                </Text>
-                <Text style={[styles.time, { fontSize: r.compact ? 38 : r.tablet ? 52 : 44 }]}>{clock(seconds)}</Text>
-                <View style={styles.sharing}>
-                  <Radio color={colors.green} size={iconSize.sm} strokeWidth={iconStroke} />
-                  <Text variant="label" style={{ color: colors.green }}>
-                    Sharing location with operations
+        {list.isLoading || (current && detail.isLoading) ? (
+          <LoadingView />
+        ) : list.error || detail.error ? (
+          <ErrorView error={list.error ?? detail.error} onRetry={() => (list.refetch(), detail.refetch())} />
+        ) : !b || !detail.data ? (
+          <EmptyView icon={Radio} title="No duty right now" body="When your company assigns you a job, it shows here." />
+        ) : (
+          <View style={[split && styles.bodySplit, { gap: split ? space.xxl : gap }]}>
+            <View style={[{ gap }, split && styles.col]}>
+              <LiveMap height={r.tablet ? 320 : 200} target={KARACHI} staff={live ? KARACHI : undefined} geofenceMeters={guard ? 60 : undefined} />
+              {live ? (
+                <View style={styles.timer}>
+                  <Text variant="caption" tone="muted">
+                    Time on duty
                   </Text>
+                  <Text style={[styles.time, { fontSize: r.compact ? 38 : r.tablet ? 52 : 44 }]}>{clock(seconds)}</Text>
                 </View>
-              </View>
-            ) : null}
-          </View>
+              ) : null}
+            </View>
 
-          <View style={[{ gap }, split && styles.col]}>
-            <Card style={{ gap: 0 }}>
-              <DetailRow label="Assignment" value={a.id} />
-              <DetailRow label={isGuard ? 'Post' : 'Pickup'} value={a.location} />
-              <DetailRow label="Duration" value={a.duration} />
-              {isGuard ? <DetailRow label="Last check-in" value={lastCheck ?? 'Not yet'} /> : null}
-            </Card>
-
-            {phase === 'ready' ? (
-              <>
-                <Text variant="label" tone="muted">
-                  Location sharing starts when you check in and stops when you finish.
-                </Text>
-                <Button
-                  label={isGuard ? 'I am at my post' : 'I have arrived'}
-                  icon={<MapPin color={colors.onPrimary} size={iconSize.md} strokeWidth={iconStroke} />}
-                  onPress={() => setPhase('arrived')}
-                />
-              </>
-            ) : null}
-
-            {phase === 'arrived' ? (
-              <Button
-                label={isGuard ? 'Check in and start shift' : 'Confirm vehicle handover and start'}
-                onPress={() => {
-                  setPhase('on_duty');
-                  setLastCheck(now());
-                }}
-              />
-            ) : null}
-
-            {phase === 'on_duty' ? (
-              <View style={{ gap: space.md }}>
-                {isGuard ? (
-                  <Button label="Complete scheduled check-in" variant="secondary" onPress={() => setLastCheck(now())} />
-                ) : null}
-                <Button
-                  label={onBreak ? 'End break' : 'Start break'}
-                  variant="secondary"
-                  icon={<Coffee color={colors.text} size={iconSize.md} strokeWidth={iconStroke} />}
-                  onPress={() => setOnBreak((b) => !b)}
-                />
-                <Button label="Finish duty" onPress={() => setPhase('finished')} />
-              </View>
-            ) : null}
-
-            {phase === 'finished' ? (
-              <Card tinted style={{ gap: space.sm }}>
-                <Text variant="heading">Duty complete</Text>
-                <Text variant="label" tone="muted">
-                  {clock(seconds)} recorded. Your duty report has been sent to operations.
-                </Text>
+            <View style={[{ gap }, split && styles.col]}>
+              <Card style={{ gap: 0 }}>
+                <DetailRow label="Booking" value={b.code} />
+                <DetailRow label="Starts" value={whenText(b.startAt)} />
+                <DetailRow label={guard ? 'Post' : 'Pickup'} value={b.location.point ? `${b.location.point}, ${b.location.address}` : b.location.address} />
+                <DetailRow label="Duration" value={durationText(b)} />
+                {guard && live ? <DetailRow label="Last check-in" value={lastCheck ?? 'At start'} /> : null}
               </Card>
-            ) : null}
 
-            <ListRow
-              icon={AlertTriangle}
-              title="Report a problem"
-              subtitle="Accident, breakdown or urgent help"
-              onPress={() => router.push('/incident')}
-            />
+              <DutyControls booking={b} next={detail.data.next} guard={guard} />
+
+              {live ? (
+                <View style={{ gap: space.md }}>
+                  {/* TODO(phase 3): breaks and timed check-ins are recorded on the server with location. */}
+                  {guard ? <Button label="Complete check-in" variant="secondary" onPress={() => setLastCheck(now())} /> : null}
+                  <Button
+                    label={onBreak ? 'End break' : 'Start break'}
+                    variant="secondary"
+                    icon={<Coffee color={colors.text} size={iconSize.md} strokeWidth={iconStroke} />}
+                    onPress={() => setOnBreak((v) => !v)}
+                  />
+                </View>
+              ) : null}
+
+              <Button label="Open job details" variant="ghost" onPress={() => router.push(`/assignment/${b.id}`)} />
+              <ListRow icon={AlertTriangle} title="Report a problem" subtitle="Accident, breakdown or urgent help" onPress={() => router.push('/incident')} />
+            </View>
           </View>
-        </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -146,11 +116,9 @@ export function StaffDuty() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   content: { paddingBottom: space.xxxl },
-  head: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  body: {},
+  head: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: space.md },
   bodySplit: { flexDirection: 'row', alignItems: 'flex-start' },
   col: { flex: 1, minWidth: 0 },
   timer: { alignItems: 'center', gap: 4 },
   time: { fontFamily: 'Manrope_700Bold', letterSpacing: -1, color: colors.text, fontVariant: ['tabular-nums'] },
-  sharing: { flexDirection: 'row', alignItems: 'center', gap: 6 },
 });

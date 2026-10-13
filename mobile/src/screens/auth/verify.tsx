@@ -4,15 +4,14 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Button, Header, OtpInput, Screen, Text } from '@/components/ui';
 import { AuthError, requestOtp, verifyOtp, type OtpPurpose } from '@/features/auth/api';
-import { useAuth } from '@/stores/auth';
 import { space } from '@/theme';
 import { formatPkPhone } from '@/utils/phone';
 
 const RESEND_SECONDS = 30;
 
 export function Verify() {
-  const params = useLocalSearchParams<{ phone: string; purpose: OtpPurpose; name?: string; email?: string }>();
-  const signIn = useAuth((s) => s.signIn);
+  const params = useLocalSearchParams<{ phone: string; purpose: OtpPurpose; name?: string; email?: string; devCode?: string }>();
+  const [devCode, setDevCode] = useState(params.devCode);
   const [code, setCode] = useState('');
   const [error, setError] = useState<string>();
   const [loading, setLoading] = useState(false);
@@ -29,13 +28,12 @@ export function Verify() {
     setError(undefined);
     setLoading(true);
     try {
-      const { token, user } = await verifyOtp({
+      await verifyOtp({
         phone: params.phone,
         code: value,
         name: params.name,
         email: params.email || undefined,
       });
-      await signIn(token, user);
       router.replace('/');
     } catch (e) {
       setError(e instanceof AuthError ? e.message : 'Something went wrong. Try again.');
@@ -47,7 +45,12 @@ export function Verify() {
     setCode('');
     setError(undefined);
     setResendIn(RESEND_SECONDS);
-    await requestOtp(params.phone, params.purpose);
+    try {
+      const r = await requestOtp(params.phone, params.purpose);
+      setDevCode(r.devCode);
+    } catch (e) {
+      setError(e instanceof AuthError ? e.message : 'Could not send a new code.');
+    }
   };
 
   return (
@@ -57,6 +60,11 @@ export function Verify() {
       <View style={styles.intro}>
         <Text variant="title">Enter the code</Text>
         <Text tone="muted">Sent by SMS to +92 {formatPkPhone(params.phone ?? '')}</Text>
+        {devCode ? (
+          <Text variant="label" tone="accent">
+            Test build code: {devCode}
+          </Text>
+        ) : null}
       </View>
 
       <OtpInput

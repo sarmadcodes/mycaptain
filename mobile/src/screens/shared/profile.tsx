@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, Badge, Button, ListRow, Text } from '@/components/ui';
 import { useResponsive } from '@/lib/use-responsive';
+import { signOut } from '@/features/auth/api';
 import { isStaff, useAuth } from '@/stores/auth';
 import { colors, space } from '@/theme';
 
@@ -14,7 +15,6 @@ export type ProfileItem = { icon: LucideIcon; title: string; subtitle?: string; 
 export function Profile({ items }: { items: ProfileItem[] }) {
   const r = useResponsive();
   const user = useAuth((s) => s.user);
-  const signOut = useAuth((s) => s.signOut);
   if (!user) return null;
 
   return (

@@ -3,59 +3,80 @@ import { CheckCircle2, CreditCard, Landmark, Smartphone } from 'lucide-react-nat
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { Button, Card, DetailRow, Header, Screen, SelectCard, Text } from '@/components/ui';
-import { formatPKR, quote } from '@/features/booking/pricing';
+import { Button, Card, DetailRow, ErrorView, Header, LoadingView, Screen, SelectCard, Text } from '@/components/ui';
+import { useCreateBooking, useQuote } from '@/features/api';
+import { formatPKR } from '@/features/booking/pricing';
 import { useBookingDraft } from '@/features/booking/store';
+import { toInput } from '@/features/booking/to-input';
+import { errorMessage } from '@/services/api/client';
 import { colors, space } from '@/theme';
+import type { ApiBooking } from '@/types/api';
 
 type Method = 'card' | 'wallet' | 'bank';
 
 export function PaymentStep() {
   const draft = useBookingDraft();
-  const price = quote(draft);
+  const input = toInput(draft);
+  const quote = useQuote(input);
+  const create = useCreateBooking();
   const [method, setMethod] = useState<Method>('card');
-  const [state, setState] = useState<'idle' | 'paying' | 'done'>('idle');
+  const [booking, setBooking] = useState<ApiBooking>();
 
-  // TODO(payments): hand off to the chosen payment provider's checkout.
-  const pay = async () => {
-    setState('paying');
-    await new Promise((r) => setTimeout(r, 1400));
-    setState('done');
+  // TODO(phase 4): open the payment provider's checkout for `method`, then create on success.
+  const confirm = async () => {
+    const { booking: created } = await create.mutateAsync(input);
+    setBooking(created);
   };
 
-  if (state === 'done') {
+  if (booking) {
     return (
       <Screen
         scroll={false}
         footer={
           <>
-            <Button label="Track booking" onPress={() => router.replace('/booking/MC-2048')} />
+            <Button label="Track booking" onPress={() => router.replace(`/booking/${booking.id}`)} />
             <Button label="Back to home" variant="ghost" onPress={() => router.replace('/home')} />
           </>
         }>
         <View style={styles.done}>
           <CheckCircle2 color={colors.green} size={56} strokeWidth={1.5} />
-          <Text variant="title">Payment successful</Text>
+          <Text variant="title">Booking received</Text>
           <Text tone="muted" style={{ textAlign: 'center' }}>
-            Booking MC-2051 is confirmed. We are assigning your captain and will notify you shortly.
+            {booking.code} is with our team. We confirm payment, assign your captain and update you here live.
           </Text>
           <Card style={styles.receipt}>
-            <DetailRow label="Amount paid" value={formatPKR(price.total)} />
-            <DetailRow label="Receipt" value="In Bookings" />
+            <DetailRow label="Booking" value={booking.code} />
+            <DetailRow label="Total" value={formatPKR(booking.price.total)} strong />
           </Card>
         </View>
       </Screen>
     );
   }
 
+  const price = quote.data?.price;
   return (
     <Screen
       header={<Header title="Payment" />}
-      footer={<Button label={`Pay ${formatPKR(price.total)}`} loading={state === 'paying'} onPress={pay} />}>
+      footer={
+        <>
+          {create.error ? (
+            <Text variant="caption" tone="danger">
+              {errorMessage(create.error)}
+            </Text>
+          ) : null}
+          <Button
+            label={price ? `Confirm and pay ${formatPKR(price.total)}` : 'Confirm booking'}
+            disabled={!price}
+            loading={create.isPending}
+            onPress={() => confirm().catch(() => {})}
+          />
+        </>
+      }>
       <View style={styles.intro}>
         <Text variant="title">How would you like to pay?</Text>
         <Text tone="muted">Every payment stays inside My Captain.</Text>
       </View>
+      {quote.isLoading ? <LoadingView label="Checking price" /> : quote.error ? <ErrorView error={quote.error} onRetry={quote.refetch} /> : null}
       <View style={styles.options}>
         <SelectCard
           icon={CreditCard}
@@ -71,16 +92,10 @@ export function PaymentStep() {
           selected={method === 'wallet'}
           onPress={() => setMethod('wallet')}
         />
-        <SelectCard
-          icon={Landmark}
-          title="Bank transfer"
-          subtitle="Raast or IBFT"
-          selected={method === 'bank'}
-          onPress={() => setMethod('bank')}
-        />
+        <SelectCard icon={Landmark} title="Bank transfer" subtitle="Raast or IBFT" selected={method === 'bank'} onPress={() => setMethod('bank')} />
       </View>
       <Text variant="caption" tone="muted" style={{ marginTop: space.xl }}>
-        Receipts and invoices are saved in Bookings. Extensions and renewals use the same checkout.
+        Receipts are saved in Bookings. Staff never collect cash.
       </Text>
     </Screen>
   );

@@ -2,18 +2,23 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { BadgeCheck } from 'lucide-react-native';
 import { StyleSheet, View } from 'react-native';
 
-import { Avatar, Button, Card, DetailRow, Header, Screen, Text } from '@/components/ui';
+import { Avatar, Button, Card, DetailRow, ErrorView, Header, LoadingView, Screen, Text } from '@/components/ui';
+import { useStaffProfiles } from '@/features/api';
 import { useBookingDraft } from '@/features/booking/store';
-import { findStaff } from '@/lib/mock-data';
 import { colors, iconStroke, space } from '@/theme';
 
-const kindLabel = { driver: 'Driver', guard: 'Security guard', gunman: 'Armed gunman' };
+const kindLabel = { driver: 'Driver', guard: 'Security guard (bouncer)', gunman: 'Armed gunman' };
 
 export function StaffProfileStep() {
   const { driverId } = useLocalSearchParams<{ driverId: string }>();
+  const service = useBookingDraft((s) => s.service);
   const set = useBookingDraft((s) => s.set);
-  const staff = findStaff(driverId);
+  const kind = service === 'driver' || service === 'rental' ? 'driver' : service === 'guard' ? 'guard' : 'gunman';
+  const { data, isLoading, error, refetch } = useStaffProfiles(kind);
+  const staff = data?.staff.find((s) => s.id === driverId);
 
+  if (isLoading) return <Screen header={<Header />}><LoadingView /></Screen>;
+  if (error) return <Screen header={<Header />}><ErrorView error={error} onRetry={refetch} /></Screen>;
   if (!staff) {
     return (
       <Screen header={<Header />}>
@@ -23,15 +28,14 @@ export function StaffProfileStep() {
   }
 
   const first = staff.name.split(' ')[0];
-
   return (
     <Screen
       header={<Header />}
       footer={
         <Button
-          label={`Select ${first}`}
+          label={`Request ${first}`}
           onPress={() => {
-            set({ staffId: staff.id });
+            set({ staffId: staff.id, staffName: staff.name });
             router.push('/book/schedule');
           }}
         />
@@ -42,23 +46,16 @@ export function StaffProfileStep() {
         <View style={styles.verified}>
           <BadgeCheck color={colors.green} size={16} strokeWidth={iconStroke} />
           <Text variant="label" style={{ color: colors.green }}>
-            Identity and background verified
+            Identity and documents verified
           </Text>
         </View>
       </View>
-
       <Card style={{ gap: 0 }}>
-        <DetailRow label="Role" value={kindLabel[staff.kind]} />
-        <DetailRow label="Company" value={staff.company} />
-        <DetailRow label="Experience" value={`${staff.years} years`} />
-        <DetailRow label="Speciality" value={staff.specialty} />
-        <DetailRow label="Languages" value={staff.languages} />
-        <DetailRow label="Rating" value={`${staff.rating.toFixed(1)} out of 5`} />
-        <DetailRow label="Next available" value={`In ${staff.eta}`} />
+        <DetailRow label="Role" value={kindLabel[staff.staffKind]} />
+        <DetailRow label="Company" value={staff.companyName ?? 'My Captain partner'} />
       </Card>
-
       <Text variant="caption" tone="muted" style={{ marginTop: space.lg }}>
-        If {first} becomes unavailable, My Captain assigns a captain with matching experience.
+        If {first} is not available at your time, My Captain assigns a captain with matching experience.
       </Text>
     </Screen>
   );

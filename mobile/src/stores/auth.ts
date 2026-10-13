@@ -1,40 +1,58 @@
 import { create } from 'zustand';
 
 import { secureStorage } from '@/lib/secure-storage';
-import type { Role, User } from '@/types';
+import type { ApiUser, Role, Session } from '@/types/api';
 
-const TOKEN_KEY = 'mc.token';
+const ACCESS_KEY = 'mc.access';
+const REFRESH_KEY = 'mc.refresh';
 const USER_KEY = 'mc.user';
 
 type AuthState = {
-  user: User | null;
+  user: ApiUser | null;
   token: string | null;
+  refreshToken: string | null;
   hydrated: boolean;
   hydrate: () => Promise<void>;
-  signIn: (token: string, user: User) => Promise<void>;
-  signOut: () => Promise<void>;
+  setSession: (s: Session) => Promise<void>;
+  setUser: (u: ApiUser) => Promise<void>;
+  clear: () => Promise<void>;
 };
 
 export const useAuth = create<AuthState>((set) => ({
   user: null,
   token: null,
+  refreshToken: null,
   hydrated: false,
-  // TODO(backend): validate stored token with GET /auth/me once the API exists.
   hydrate: async () => {
     try {
-      const [token, rawUser] = await Promise.all([secureStorage.get(TOKEN_KEY), secureStorage.get(USER_KEY)]);
-      set({ token, user: token && rawUser ? (JSON.parse(rawUser) as User) : null });
+      const [token, refreshToken, rawUser] = await Promise.all([
+        secureStorage.get(ACCESS_KEY),
+        secureStorage.get(REFRESH_KEY),
+        secureStorage.get(USER_KEY),
+      ]);
+      const user = refreshToken && rawUser ? (JSON.parse(rawUser) as ApiUser) : null;
+      set({ token: user ? token : null, refreshToken: user ? refreshToken : null, user });
+    } catch {
+      set({ token: null, refreshToken: null, user: null });
     } finally {
       set({ hydrated: true });
     }
   },
-  signIn: async (token, user) => {
-    await Promise.all([secureStorage.set(TOKEN_KEY, token), secureStorage.set(USER_KEY, JSON.stringify(user))]);
-    set({ token, user });
+  setSession: async ({ accessToken, refreshToken, user }) => {
+    await Promise.all([
+      secureStorage.set(ACCESS_KEY, accessToken),
+      secureStorage.set(REFRESH_KEY, refreshToken),
+      secureStorage.set(USER_KEY, JSON.stringify(user)),
+    ]);
+    set({ token: accessToken, refreshToken, user });
   },
-  signOut: async () => {
-    await Promise.all([secureStorage.remove(TOKEN_KEY), secureStorage.remove(USER_KEY)]);
-    set({ token: null, user: null });
+  setUser: async (user) => {
+    await secureStorage.set(USER_KEY, JSON.stringify(user));
+    set({ user });
+  },
+  clear: async () => {
+    await Promise.all([secureStorage.remove(ACCESS_KEY), secureStorage.remove(REFRESH_KEY), secureStorage.remove(USER_KEY)]);
+    set({ token: null, refreshToken: null, user: null });
   },
 }));
 

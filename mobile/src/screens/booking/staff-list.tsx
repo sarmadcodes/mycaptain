@@ -1,37 +1,53 @@
 import { router } from 'expo-router';
-import { Star } from 'lucide-react-native';
+import { BadgeCheck, UserRoundSearch } from 'lucide-react-native';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { Avatar, Card, Header, Screen, Text } from '@/components/ui';
+import { Avatar, Button, Card, EmptyView, ErrorView, Header, LoadingView, Screen, Text } from '@/components/ui';
+import { useStaffProfiles } from '@/features/api';
 import { useBookingDraft } from '@/features/booking/store';
-import { drivers, securityStaff, type StaffProfile } from '@/lib/mock-data';
 import { colors, iconStroke, space } from '@/theme';
+import type { StaffProfileApi } from '@/types/api';
 
-// Matching drivers (by vehicle class) or security personnel (by type).
+// Customers may pick a preferred captain, or let My Captain assign the best match.
 export function StaffList({ kind }: { kind: 'driver' | 'security' }) {
-  const draft = useBookingDraft();
-  const list =
-    kind === 'driver'
-      ? drivers.filter((d) => d.classes?.includes(draft.vehicle.class))
-      : securityStaff.filter((s) => (draft.service === 'guard' ? s.kind === 'guard' : s.kind === 'gunman'));
+  const service = useBookingDraft((s) => s.service);
+  const set = useBookingDraft((s) => s.set);
+  const staffKind = kind === 'driver' ? 'driver' : service === 'guard' ? 'guard' : 'gunman';
+  const { data, isLoading, error, refetch } = useStaffProfiles(staffKind);
+  const title = kind === 'driver' ? 'Choose a driver' : service === 'guard' ? 'Choose a guard' : 'Choose a lead';
 
-  const title = kind === 'driver' ? 'Choose a driver' : draft.service === 'guard' ? 'Choose a guard' : 'Choose a lead';
+  const autoAssign = () => {
+    set({ staffId: undefined, staffName: undefined });
+    router.push('/book/schedule');
+  };
 
   return (
-    <Screen header={<Header title={title} />}>
-      <View style={styles.list}>
-        {list.map((s) => (
-          <StaffCard key={s.id} staff={s} onPress={() => router.push(`/book/driver/${s.id}`)} />
-        ))}
-      </View>
+    <Screen header={<Header title={title} />} footer={<Button label="Let My Captain choose" variant="secondary" onPress={autoAssign} />}>
+      {isLoading ? (
+        <LoadingView />
+      ) : error ? (
+        <ErrorView error={error} onRetry={refetch} />
+      ) : !data?.staff.length ? (
+        <EmptyView
+          icon={UserRoundSearch}
+          title="We will assign the best match"
+          body="No profiles to choose from in your area yet. Continue and our team assigns a verified captain."
+        />
+      ) : (
+        <View style={styles.list}>
+          {data.staff.map((s) => (
+            <StaffCard key={s.id} staff={s} onPress={() => router.push(`/book/driver/${s.id}`)} />
+          ))}
+        </View>
+      )}
       <Text variant="caption" tone="muted" style={styles.note}>
-        Profiles are shown by fit. My Captain confirms the final assignment and can arrange a replacement.
+        A preferred captain is assigned when available. Otherwise we assign one with matching experience.
       </Text>
     </Screen>
   );
 }
 
-function StaffCard({ staff, onPress }: { staff: StaffProfile; onPress: () => void }) {
+function StaffCard({ staff, onPress }: { staff: StaffProfileApi; onPress: () => void }) {
   return (
     <Pressable onPress={onPress} accessibilityRole="button">
       {({ pressed }) => (
@@ -40,19 +56,10 @@ function StaffCard({ staff, onPress }: { staff: StaffProfile; onPress: () => voi
           <View style={{ flex: 1, gap: 2 }}>
             <Text variant="heading">{staff.name}</Text>
             <Text variant="label" tone="muted">
-              {staff.specialty}, {staff.years} yrs
-            </Text>
-            <Text variant="caption" tone="muted">
-              {staff.company}
-            </Text>
-            <Text variant="label" tone="accent">
-              Available in {staff.eta}
+              {staff.companyName}
             </Text>
           </View>
-          <View style={styles.rating}>
-            <Star color={colors.amber} fill={colors.amber} size={14} strokeWidth={iconStroke} />
-            <Text variant="label">{staff.rating.toFixed(1)}</Text>
-          </View>
+          {staff.verified ? <BadgeCheck color={colors.green} size={20} strokeWidth={iconStroke} /> : null}
         </Card>
       )}
     </Pressable>
@@ -62,6 +69,5 @@ function StaffCard({ staff, onPress }: { staff: StaffProfile; onPress: () => voi
 const styles = StyleSheet.create({
   list: { gap: space.md },
   card: { flexDirection: 'row', alignItems: 'center', gap: space.md },
-  rating: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start' },
   note: { marginTop: space.xl },
 });

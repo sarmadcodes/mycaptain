@@ -5,7 +5,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { StyleSheet, View } from 'react-native';
 
 import { Button, Header, PhoneField, Screen, Text } from '@/components/ui';
-import { requestOtp } from '@/features/auth/api';
+import { AuthError, requestOtp } from '@/features/auth/api';
 import { phoneSchema, type PhoneForm } from '@/features/auth/schemas';
 import { space } from '@/theme';
 
@@ -19,10 +19,10 @@ export function SignIn() {
   const onSubmit = handleSubmit(async ({ phone }) => {
     setError(undefined);
     try {
-      await requestOtp(phone, 'sign-in');
-      router.push({ pathname: '/verify', params: { phone, purpose: 'sign-in' } });
-    } catch {
-      setError('We could not send the code. Check your connection and try again.');
+      const r = await requestOtp(phone, 'sign-in');
+      router.push({ pathname: '/verify', params: { phone, purpose: 'sign-in', devCode: r.devCode } });
+    } catch (e) {
+      setError(e instanceof AuthError ? e.message : 'We could not send the code. Try again.');
     }
   });
 

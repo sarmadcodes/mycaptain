@@ -1,22 +1,65 @@
+import { useEffect } from 'react';
 import { io, type Socket } from 'socket.io-client';
 
+import { queryClient } from '@/lib/query-client';
+import { useAuth } from '@/stores/auth';
+import type { ApiBooking } from '@/types/api';
+
+const SOCKET_URL = process.env.EXPO_PUBLIC_SOCKET_URL ?? 'http://localhost:4000';
+
 let socket: Socket | null = null;
+let currentToken: string | null = null;
 
-// Connected after sign-in; used for live location, duty status and alerts.
-export function connectSocket(token: string) {
+export const getSocket = () => socket;
+
+function connect(token: string) {
+  if (socket && currentToken === token) return;
   socket?.disconnect();
-  socket = io(process.env.EXPO_PUBLIC_SOCKET_URL, {
-    auth: { token },
-    transports: ['websocket'],
-  });
-  return socket;
-}
+  currentToken = token;
+  socket = io(SOCKET_URL, { auth: { token }, transports: ['websocket'], reconnectionDelayMax: 10_000 });
 
-export function getSocket() {
-  return socket;
+  // Keep cached screens fresh when the server reports a change.
+  const onBooking = (b: ApiBooking) => {
+    queryClient.setQueryData(['booking', b.id], (old: { booking: ApiBooking } | undefined) => (old ? { ...old, booking: b } : old));
+    queryClient.invalidateQueries({ queryKey: ['booking', b.id] });
+    queryClient.invalidateQueries({ queryKey: ['bookings'] });
+    queryClient.invalidateQueries({ queryKey: ['admin'] });
+  };
+  socket.on('booking:created', onBooking);
+  socket.on('booking:updated', onBooking);
+  socket.on('booking:removed', () => queryClient.invalidateQueries({ queryKey: ['bookings'] }));
+  socket.on('company:new', () => queryClient.invalidateQueries({ queryKey: ['admin'] }));
+  socket.on('company:updated', () => queryClient.invalidateQueries({ queryKey: ['admin'] }));
+  socket.on('rates:updated', () => queryClient.invalidateQueries({ queryKey: ['rates'] }));
 }
 
 export function disconnectSocket() {
   socket?.disconnect();
   socket = null;
+  currentToken = null;
+}
+
+// Mounted once at the root: follows the signed-in session.
+export function useLiveConnection() {
+  const token = useAuth((s) => s.token);
+  useEffect(() => {
+    if (token) connect(token);
+    else disconnectSocket();
+  }, [token]);
+}
+
+// Follow one booking's room while a screen is open.
+export function useWatchBooking(id?: string) {
+  const token = useAuth((s) => s.token);
+  useEffect(() => {
+    if (!id || !socket) return;
+    const s = socket;
+    const watch = () => s.emit('booking:watch', id);
+    watch();
+    s.on('connect', watch); // rejoin after reconnects
+    return () => {
+      s.off('connect', watch);
+      s.emit('booking:unwatch', id);
+    };
+  }, [id, token]);
 }

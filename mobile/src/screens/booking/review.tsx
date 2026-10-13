@@ -2,12 +2,13 @@ import { router } from 'expo-router';
 import { CarFront } from 'lucide-react-native';
 import { StyleSheet, View } from 'react-native';
 
-import { Avatar, Button, Card, DetailRow, Header, Screen, Text } from '@/components/ui';
-import { durationLabel, formatPKR, quote } from '@/features/booking/pricing';
+import { Avatar, Button, Card, DetailRow, ErrorView, Header, LoadingView, Screen, Text } from '@/components/ui';
+import { useQuote } from '@/features/api';
+import { toInput } from '@/features/booking/to-input';
+import { durationLabel, formatPKR } from '@/features/booking/pricing';
 import { useBookingDraft } from '@/features/booking/store';
-import { findCar, findStaff } from '@/lib/mock-data';
 import { colors, radius, space } from '@/theme';
-import type { ServiceType } from '@/types';
+import type { Service as ServiceType } from '@/types/api';
 import { formatDate, formatTime } from '@/utils/datetime';
 
 const serviceName: Record<ServiceType, string> = {
@@ -21,9 +22,11 @@ const vehicleName = { small: 'Small car', sedan: 'Sedan', suv: 'SUV', luxury: 'L
 
 export function ReviewStep() {
   const d = useBookingDraft();
-  const staff = findStaff(d.staffId);
-  const car = d.service === 'rental' ? findCar(d.carId) : undefined;
-  const price = quote(d);
+  const staff = d.staffId && d.staffName ? { name: d.staffName, company: 'Requested captain' } : undefined;
+  const car = d.service === 'rental' && d.carName ? { name: d.carName, company: d.carCompany ?? 'Partner fleet' } : undefined;
+  // Price comes from the server, the same calculation used when the booking is created.
+  const quote = useQuote(toInput(d));
+  const price = quote.data?.price;
   const scheduled = d.start === 'later' || d.plan === 'monthly' || d.plan === 'contract';
   const when = scheduled ? `${formatDate(d.date)}, ${formatTime(d.time)}` : 'Now, within 30 minutes';
 
@@ -37,7 +40,7 @@ export function ReviewStep() {
   return (
     <Screen
       header={<Header title="Review booking" />}
-      footer={<Button label="Continue to payment" onPress={() => router.push('/book/payment')} />}>
+      footer={<Button label="Continue to payment" disabled={!price} onPress={() => router.push('/book/payment')} />}>
       {staff ? (
         <Card style={styles.top}>
           <Avatar name={staff.name} />
@@ -87,17 +90,23 @@ export function ReviewStep() {
         )}
       </Card>
 
-      <Card style={styles.block}>
-        <DetailRow label="Service price" value={formatPKR(price.subtotal)} />
-        <DetailRow label="Platform fee and taxes" value={formatPKR(price.fee)} />
-        <View style={styles.divider} />
-        <DetailRow label="Total" value={formatPKR(price.total)} strong />
-        {price.perPeriod ? (
-          <Text variant="caption" tone="muted">
-            Billed monthly: {formatPKR(price.perPeriod)}
-          </Text>
-        ) : null}
-      </Card>
+      {quote.isLoading ? (
+        <LoadingView label="Calculating price" />
+      ) : quote.error || !price ? (
+        <ErrorView error={quote.error} onRetry={quote.refetch} />
+      ) : (
+        <Card style={styles.block}>
+          <DetailRow label="Service price" value={formatPKR(price.subtotal)} />
+          <DetailRow label="Platform fee and taxes" value={formatPKR(price.fee)} />
+          <View style={styles.divider} />
+          <DetailRow label="Total" value={formatPKR(price.total)} strong />
+          {d.plan === 'contract' ? (
+            <Text variant="caption" tone="muted">
+              Billed monthly: {formatPKR(Math.round(price.total / d.contractMonths))}
+            </Text>
+          ) : null}
+        </Card>
+      )}
 
       <Text variant="caption" tone="muted" style={{ marginTop: space.lg }}>
         {d.service === 'rental' ? 'Fuel and tolls are billed at actual cost after the trip. ' : ''}

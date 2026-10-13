@@ -7,13 +7,16 @@ import { Badge, Button, Card, DetailRow, Header, ListRow, Screen, Section, Text,
 import { SwitchRow } from '@/components/ui/switch-row';
 import { formatPKR } from '@/features/booking/pricing';
 import { useBookingDraft } from '@/features/booking/store';
+import { api, errorMessage } from '@/services/api/client';
 import { useAuth } from '@/stores/auth';
+import type { ApiUser } from '@/types/api';
 import { colors, space } from '@/theme';
 
 export function PersonalDetails() {
   const user = useAuth((s) => s.user);
-  const signIn = useAuth((s) => s.signIn);
-  const token = useAuth((s) => s.token);
+  const setUser = useAuth((s) => s.setUser);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string>();
   const [name, setName] = useState(user?.name ?? '');
   const [email, setEmail] = useState(user?.email ?? '');
   const [saved, setSaved] = useState(false);
@@ -21,14 +24,23 @@ export function PersonalDetails() {
 
   // TODO(backend): PATCH /me
   const save = async () => {
-    await signIn(token ?? '', { ...user, name: name.trim() || user.name, email: email.trim() || undefined });
-    setSaved(true);
+    setError(undefined);
+    setSaving(true);
+    try {
+      const { data } = await api.patch<{ user: ApiUser }>('/auth/me', { name: name.trim(), ...(email.trim() ? { email: email.trim() } : {}) });
+      await setUser({ ...user, ...data.user, company: user.company });
+      setSaved(true);
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <Screen
       header={<Header title="Personal details" />}
-      footer={<Button label={saved ? 'Saved' : 'Save changes'} onPress={save} />}>
+      footer={<Button label={saved ? 'Saved' : 'Save changes'} loading={saving} onPress={save} />}>
       <View style={styles.form}>
         <TextField label="Full name" value={name} onChangeText={(t) => (setName(t), setSaved(false))} autoCapitalize="words" />
         <TextField label="Mobile number" value={user.phone} editable={false} hint="To change your number, contact support." />
@@ -40,6 +52,11 @@ export function PersonalDetails() {
           autoCapitalize="none"
           hint="Receipts and invoices are sent here."
         />
+        {error ? (
+          <Text variant="caption" tone="danger">
+            {error}
+          </Text>
+        ) : null}
       </View>
     </Screen>
   );
