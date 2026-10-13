@@ -1,11 +1,15 @@
 "use client";
 
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
+
+import { api, messageOf } from "@/lib/api";
 
 import { Input } from "./register/fields";
 
-// TODO(backend): POST /partners/auth/login, then route to the partner dashboard.
 export function SignInForm() {
+  const router = useRouter();
+  const params = useSearchParams();
   const [error, setError] = useState<string>();
   const [loading, setLoading] = useState(false);
 
@@ -16,17 +20,25 @@ export function SignInForm() {
       onSubmit={async (e) => {
         e.preventDefault();
         const data = new FormData(e.currentTarget);
-        if (!data.get("email") || !data.get("password")) return setError("Enter your email and password.");
+        const identifier = String(data.get("identifier") ?? "").trim();
+        const password = String(data.get("password") ?? "");
+        if (!identifier || !password) return setError("Enter your email or phone and your password.");
         setError(undefined);
         setLoading(true);
-        await new Promise((r) => setTimeout(r, 900));
-        setLoading(false);
-        setError("The partner dashboard opens once your application is approved.");
+        try {
+          await api("/api/auth/login", { method: "POST", json: { identifier, password } });
+          const next = params.get("next");
+          router.replace(next?.startsWith("/dashboard") ? next : "/dashboard");
+          router.refresh();
+        } catch (err) {
+          setError(messageOf(err));
+          setLoading(false);
+        }
       }}>
-      <Input label="Email" name="email" type="email" autoComplete="email" />
+      <Input label="Email or phone" name="identifier" autoComplete="username" placeholder="you@company.pk or 3001234567" />
       <Input label="Password" name="password" type="password" autoComplete="current-password" />
       {error ? (
-        <p role="alert" className="rounded-xl bg-pale px-4 py-3 text-sm text-ink">
+        <p role="alert" className="rounded-xl bg-pale px-4 py-3 text-sm text-danger">
           {error}
         </p>
       ) : null}

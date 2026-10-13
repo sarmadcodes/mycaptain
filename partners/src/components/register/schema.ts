@@ -7,6 +7,7 @@ export const SERVICES = [
   { value: "guards", label: "Unarmed guards", hint: "Homes, offices and events" },
   { value: "armed", label: "Armed guards", hint: "Licensed armed personnel" },
   { value: "teams", label: "Security teams", hint: "Gunman with additional guards" },
+  { value: "rentals", label: "Car rentals with driver", hint: "Your fleet, driven by your drivers" },
 ];
 
 const optionalNumber = z
@@ -72,7 +73,7 @@ type Values = {
 // invalid, so the form also runs these per step before moving on.
 export function conditionalErrors(v: Values): Record<string, string> {
   const e: Record<string, string> = {};
-  const security = v.services.some((s) => s !== "drivers");
+  const security = v.services.some((s) => s === "guards" || s === "armed" || s === "teams");
   const armed = v.services.includes("armed") || v.services.includes("teams");
   if (v.services.includes("drivers") && !v.driverCount) e.driverCount = "How many drivers can you provide?";
   if (security && !v.guardCount) e.guardCount = "How many guards can you provide?";

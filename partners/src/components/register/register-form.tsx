@@ -4,8 +4,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeftIcon, ArrowRightIcon, CheckCircleIcon, CheckIcon, PencilSimpleIcon } from "@phosphor-icons/react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Controller, useForm, type FieldPath } from "react-hook-form";
+
+import { api, upload } from "@/lib/api";
 
 import { CheckCards, FileField, Input, Select } from "./fields";
 import { CITIES, SERVICES, STEPS, conditionalErrors, schema, type Application } from "./schema";
@@ -48,7 +50,10 @@ const empty: Application = {
 
 export function RegisterForm() {
   const [step, setStep] = useState(0);
-  const [submitted, setSubmitted] = useState<string>();
+  const [submitted, setSubmitted] = useState<{ reference: string; failedUploads: string[] }>();
+  const [submitError, setSubmitError] = useState<string>();
+  // Selected files, kept outside the form state (only their names are validated there).
+  const files = useRef<Partial<Record<"docRegistration" | "docNtn" | "docLicence", File>>>({});
   const reduce = useReducedMotion();
 
   const form = useForm<Application>({
@@ -59,7 +64,7 @@ export function RegisterForm() {
   const { register, control, watch, trigger, handleSubmit, formState, getValues, reset, setError, setFocus } = form;
   const { errors, isSubmitting } = formState;
   const services = watch("services");
-  const security = services.some((s) => s !== "drivers");
+  const security = services.some((s) => s === "guards" || s === "armed" || s === "teams");
   const armed = services.includes("armed") || services.includes("teams");
 
   // Restore a saved draft (passwords and files are never stored).
@@ -99,16 +104,77 @@ export function RegisterForm() {
     go(step + 1);
   };
 
-  // TODO(backend): POST /partners/applications with multipart uploads.
-  const submit = handleSubmit(async () => {
-    await new Promise((r) => setTimeout(r, 1200));
+  // Backend field paths to form field names, for showing server-side validation errors.
+  const FIELD_MAP: Record<string, FieldPath<Application>> = {
+    "contact.phone": "phone",
+    "contact.email": "email",
+    "contact.name": "contactName",
+    "contact.designation": "designation",
+    "securityLicence.number": "securityLicenceNo",
+    "securityLicence.expiry": "securityLicenceExpiry",
+    securityLicence: "securityLicenceNo",
+  };
+
+  const submit = handleSubmit(async (v) => {
+    setSubmitError(undefined);
+    const security = v.services.some((s) => s === "guards" || s === "armed" || s === "teams");
+    const payload = {
+      legalName: v.legalName,
+      tradingName: v.tradingName || undefined,
+      companyType: v.companyType,
+      registrationNo: v.registrationNo,
+      ntn: v.ntn,
+      yearEstablished: Number(v.yearEstablished),
+      city: v.city,
+      address: v.address,
+      services: v.services,
+      cities: v.cities,
+      driverCount: v.driverCount ? Number(v.driverCount) : undefined,
+      guardCount: v.guardCount ? Number(v.guardCount) : undefined,
+      securityLicence: security && v.securityLicenceNo ? { number: v.securityLicenceNo, expiry: v.securityLicenceExpiry } : undefined,
+      contact: { name: v.contactName, designation: v.designation, phone: v.phone, email: v.email },
+      password: v.password,
+    };
+
+    let reference: string;
+    try {
+      const res = await api<{ company: { ref: string } }>("/api/auth/apply", { method: "POST", json: payload });
+      reference = res.company.ref;
+    } catch (e) {
+      const err = e as { message: string; fields?: { path: string; message: string }[] };
+      const fieldErrors = (err.fields ?? []).filter((f) => FIELD_MAP[f.path] || f.path in empty);
+      fieldErrors.forEach((f) => setError(FIELD_MAP[f.path] ?? (f.path as FieldPath<Application>), { type: "server", message: f.message }));
+      setSubmitError(err.message);
+      return;
+    }
+
+    // Documents go up after the account exists. Failures can be retried from the dashboard.
+    const docs: [keyof typeof files.current, string, string][] = [
+      ["docRegistration", "registration", "Registration certificate"],
+      ["docNtn", "ntn", "NTN certificate"],
+      ["docLicence", "security_licence", "Security licence"],
+    ];
+    const failedUploads: string[] = [];
+    for (const [key, kind, label] of docs) {
+      const file = files.current[key];
+      if (!file) continue;
+      const form = new FormData();
+      form.append("kind", kind);
+      form.append("file", file);
+      try {
+        await upload("/companies/me/documents", form);
+      } catch {
+        failedUploads.push(label);
+      }
+    }
+
     try {
       localStorage.removeItem(DRAFT_KEY);
     } catch {}
-    setSubmitted(`MCP-${Math.floor(100000 + Math.random() * 900000)}`);
+    setSubmitted({ reference, failedUploads });
   });
 
-  if (submitted) return <Submitted reference={submitted} email={getValues("email")} />;
+  if (submitted) return <Submitted {...submitted} email={getValues("email")} />;
 
   const err = (name: keyof Application) => errors[name]?.message as string | undefined;
 
@@ -215,14 +281,14 @@ export function RegisterForm() {
                     control={control}
                     name="docRegistration"
                     render={({ field }) => (
-                      <FileField label="Registration certificate" file={field.value} onChange={(v) => field.onChange(v ?? "")} error={err("docRegistration")} />
+                      <FileField label="Registration certificate" file={field.value} onChange={(f) => ((files.current.docRegistration = f), field.onChange(f?.name ?? ""))} error={err("docRegistration")} />
                     )}
                   />
                   <Controller
                     control={control}
                     name="docNtn"
                     render={({ field }) => (
-                      <FileField label="NTN certificate" file={field.value} onChange={(v) => field.onChange(v ?? "")} error={err("docNtn")} />
+                      <FileField label="NTN certificate" file={field.value} onChange={(f) => ((files.current.docNtn = f), field.onChange(f?.name ?? ""))} error={err("docNtn")} />
                     )}
                   />
                   {security ? (
@@ -233,7 +299,7 @@ export function RegisterForm() {
                         <FileField
                           label={armed ? "Security licence" : "Security licence (recommended)"}
                           file={field.value}
-                          onChange={(v) => field.onChange(v ?? "")}
+                          onChange={(f) => ((files.current.docLicence = f), field.onChange(f?.name ?? ""))}
                           error={err("docLicence")}
                         />
                       )}
@@ -271,6 +337,11 @@ export function RegisterForm() {
 
             {step === 4 ? <Review values={getValues()} onEdit={go} /> : null}
 
+            {submitError ? (
+              <p role="alert" className="rounded-xl bg-pale px-4 py-3 text-sm text-danger">
+                {submitError}
+              </p>
+            ) : null}
             <div className="flex flex-col-reverse gap-3 border-t border-line pt-6 sm:flex-row sm:items-center sm:justify-between">
               {step > 0 ? (
                 <button
@@ -440,14 +511,19 @@ function Review({ values: v, onEdit }: { values: Application; onEdit: (step: num
   );
 }
 
-function Submitted({ reference, email }: { reference: string; email: string }) {
+function Submitted({ reference, email, failedUploads }: { reference: string; email: string; failedUploads: string[] }) {
   return (
     <div className="mx-auto max-w-xl py-10 text-center">
       <CheckCircleIcon size={64} weight="fill" className="mx-auto text-success" />
       <h2 className="mt-6 text-3xl font-bold tracking-tight">Application received</h2>
       <p className="mt-3 text-muted">
-        Reference <span className="font-semibold text-ink">{reference}</span>. We sent a confirmation to {email}.
+        Reference <span className="font-semibold text-ink">{reference}</span>. Sign in any time with {email} to follow your review.
       </p>
+      {failedUploads.length ? (
+        <p role="alert" className="mt-6 rounded-xl bg-pale px-4 py-3 text-sm">
+          {failedUploads.join(", ")} did not upload. Add {failedUploads.length > 1 ? "them" : "it"} from your dashboard.
+        </p>
+      ) : null}
       <div className="mt-10 space-y-4 rounded-2xl border border-line p-6 text-left">
         <p className="font-semibold">What happens next</p>
         {[
@@ -461,8 +537,8 @@ function Submitted({ reference, email }: { reference: string; email: string }) {
           </p>
         ))}
       </div>
-      <Link href="/" className="mt-8 inline-flex h-12 items-center rounded-xl border border-line px-6 font-semibold hover:bg-surface">
-        Back to home
+      <Link href="/dashboard" className="mt-8 inline-flex h-12 items-center rounded-xl bg-blue px-6 font-semibold text-white hover:bg-blue-hover">
+        Open your dashboard
       </Link>
     </div>
   );

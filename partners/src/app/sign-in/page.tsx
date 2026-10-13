@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 
 import { Logo } from "@/components/logo";
 import { SignInForm } from "@/components/sign-in-form";
@@ -26,9 +27,11 @@ export default function SignInPage() {
           </Link>
           <div className="space-y-2">
             <h2 className="text-2xl font-bold tracking-tight">Partner sign in</h2>
-            <p className="text-muted">Use the email you registered with.</p>
+            <p className="text-muted">Use the email or phone number you registered with.</p>
           </div>
-          <SignInForm />
+          <Suspense>
+            <SignInForm />
+          </Suspense>
           <p className="text-sm text-muted">
             Not a partner yet?{" "}
             <Link href="/register" className="font-semibold text-blue hover:underline">

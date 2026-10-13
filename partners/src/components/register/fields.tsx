@@ -1,7 +1,7 @@
 "use client";
 
 import { CaretDownIcon, CheckIcon, FileArrowUpIcon, XIcon } from "@phosphor-icons/react";
-import { forwardRef, useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
+import { forwardRef, useId, useState, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
 
 const control =
   "h-12 w-full rounded-xl border bg-elevated px-4 text-[15px] text-ink outline-none transition placeholder:text-faint focus:border-blue focus:ring-4 focus:ring-blue/15";
@@ -149,11 +149,12 @@ export function FileField({
   hint?: string;
   error?: string;
   file?: string;
-  onChange: (name: string | undefined) => void;
+  onChange: (file: File | undefined) => void;
 }) {
   const id = useId();
+  const [tooBig, setTooBig] = useState(false);
   return (
-    <Field label={label} hint={hint} error={error} htmlFor={id}>
+    <Field label={label} hint={hint} error={tooBig ? 'This file is larger than 10 MB.' : error} htmlFor={id}>
       {file ? (
         <div className="flex h-12 items-center gap-3 rounded-xl border border-line bg-surface px-4">
           <CheckIcon size={18} weight="bold" className="text-success" />
@@ -175,7 +176,13 @@ export function FileField({
             type="file"
             accept=".pdf,image/*"
             className="sr-only"
-            onChange={(e) => onChange(e.target.files?.[0]?.name)}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              const big = !!f && f.size > 10 * 1024 * 1024;
+              setTooBig(big);
+              onChange(big ? undefined : f);
+              e.target.value = '';
+            }}
           />
         </label>
       )}
