@@ -113,9 +113,26 @@ authRouter.get('/me', requireAuth, async (req, res) => {
 authRouter.patch(
   '/me',
   requireAuth,
-  body(z.object({ name: z.string().trim().min(2).max(80).optional(), email: z.email().max(120).optional() })),
+  body(
+    z.object({
+      name: z.string().trim().min(2).max(80).optional(),
+      email: z.email().max(120).optional(),
+      // Staff only.
+      available: z.boolean().optional(),
+      availability: z
+        .object({ days: z.array(z.enum(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'])).max(7), shift: z.enum(['day', 'night', 'any']) })
+        .optional(),
+    }),
+  ),
   async (req, res) => {
-    const user = await UserModel.findByIdAndUpdate(me(req).id, { $set: req.body }, { returnDocument: 'after', runValidators: true });
+    const u = me(req);
+    const v = req.body as Record<string, unknown>;
+    if ((v.available !== undefined || v.availability) && u.role !== 'driver' && u.role !== 'guard') {
+      throw new AppError(403, 'forbidden', 'Availability is for staff accounts.');
+    }
+    // Staff names are managed by their company.
+    if (v.name && (u.role === 'driver' || u.role === 'guard')) delete v.name;
+    const user = await UserModel.findByIdAndUpdate(u.id, { $set: v }, { returnDocument: 'after', runValidators: true });
     if (!user) throw notFound('Account');
     res.json({ user });
   },
@@ -129,7 +146,7 @@ authRouter.post(
   async (req, res) => {
     const { current, next } = req.body as { current: string; next: string };
     const user = await UserModel.findById(me(req).id).select('+passwordHash');
-    if (!user || !(await user.checkPassword(current))) throw unauthorized('Current password is incorrect.');
+    if (!user || !(await user.checkPassword(current))) throw new AppError(400, 'wrong_password', 'Current password is incorrect.');
     await user.setPassword(next);
     user.tokenVersion += 1;
     await user.save();

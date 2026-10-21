@@ -4,7 +4,7 @@ import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, ListRow, Text } from '@/components/ui';
-import { PARTNER_PORTAL_URL } from '@/lib/mock-data';
+import { PARTNER_PORTAL_URL } from '@/lib/config';
 import { useResponsive } from '@/lib/use-responsive';
 import { colors, iconSize, iconStroke, radius, space } from '@/theme';
 

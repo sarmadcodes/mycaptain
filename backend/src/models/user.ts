@@ -21,6 +21,8 @@ export type User = {
   // Staff only.
   staffKind?: 'driver' | 'guard' | 'gunman';
   available: boolean;
+  // Staff working pattern, shown to their company when assigning.
+  availability?: { days: string[]; shift: 'day' | 'night' | 'any' };
   documents: FileRef[];
   avatarUrl?: string;
   // Incremented to invalidate every access token for this user (password change, suspension).
@@ -49,6 +51,11 @@ const schema = new Schema<User, Model<User, object, Methods>, Methods>(
     company: { type: Schema.Types.ObjectId, ref: 'Company', index: true },
     staffKind: { type: String, enum: ['driver', 'guard', 'gunman'] },
     available: { type: Boolean, default: true },
+    availability: {
+      _id: false,
+      days: [{ type: String, enum: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] }],
+      shift: { type: String, enum: ['day', 'night', 'any'] },
+    },
     documents: { type: [fileRefSchema], default: [] },
     avatarUrl: String,
     tokenVersion: { type: Number, default: 0 },

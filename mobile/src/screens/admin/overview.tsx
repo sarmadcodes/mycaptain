@@ -11,6 +11,8 @@ import { formatPKR } from '@/features/booking/pricing';
 import { useResponsive } from '@/lib/use-responsive';
 import { colors, radius, space } from '@/theme';
 
+import { SosPanel } from './sos-panel';
+
 export function AdminOverview() {
   const r = useResponsive();
   const { data, isLoading, error, refetch, isRefetching } = useOverview();
@@ -35,6 +37,8 @@ export function AdminOverview() {
           <Text variant="title">Operations</Text>
           <Text tone="muted">Live bookings, assignments and partners</Text>
         </View>
+
+        <SosPanel />
 
         {isLoading ? (
           <LoadingView />

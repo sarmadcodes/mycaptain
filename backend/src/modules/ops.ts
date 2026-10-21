@@ -12,6 +12,7 @@ import { body, parse } from '@/middleware/validate';
 import { BookingModel, DUTY_EVENTS, type BookingDoc, type BookingStatus } from '@/models/booking';
 import { CASE_STATUS, CASE_TYPES, CaseModel, MessageModel, NotificationModel, SosModel, type CaseDoc } from '@/models/ops';
 import { nextRef } from '@/models/shared';
+import { CompanyModel } from '@/models/company';
 import { UserModel } from '@/models/user';
 
 import { broadcast, loadBooking, refId } from './bookings';
@@ -346,7 +347,23 @@ opsRouter.patch(
   },
 );
 
-// ---------- Me: notifications and staff earnings ----------
+// ---------- Me: company, notifications and staff earnings ----------
+
+// The staff member's own company, with the contact who supervises them.
+opsRouter.get('/me/company', requireAuth, requireRole('driver', 'guard'), async (req, res) => {
+  const c = await CompanyModel.findById(me(req).company).select('legalName tradingName ref city address status securityLicence contact').lean();
+  if (!c) throw notFound('Company');
+  res.json({
+    company: {
+      name: c.tradingName || c.legalName,
+      ref: c.ref,
+      verified: c.status === 'approved',
+      office: `${c.address}, ${c.city}`,
+      licence: c.securityLicence?.number,
+      supervisor: { name: c.contact.name, phone: c.contact.phone },
+    },
+  });
+});
 
 opsRouter.get('/me/notifications', requireAuth, async (req, res) => {
   const items = await NotificationModel.find({ user: me(req).id }).sort({ createdAt: -1 }).limit(50);

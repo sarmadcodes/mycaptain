@@ -1,10 +1,12 @@
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { AlertTriangle, MessageSquareWarning, Phone, RefreshCw } from 'lucide-react-native';
-import { Linking, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Badge, Card, ListRow, Section, Text } from '@/components/ui';
-import { cases } from '@/lib/mock-data';
+import { Badge, Card, ErrorView, ListRow, LoadingView, Section, Text } from '@/components/ui';
+import { CASE_STATUS_LABEL, CASE_TYPE_LABEL } from '@/features/cases';
+import { useCases } from '@/features/ops';
+import { SUPPORT_PHONE } from '@/lib/config';
 import { useResponsive } from '@/lib/use-responsive';
 import { colors, space } from '@/theme';
 
@@ -12,6 +14,7 @@ export function CustomerSupport() {
   const r = useResponsive();
   // Tablets: actions on the left, cases on the right. Phones: stacked.
   const split = r.tablet;
+  const cases = useCases();
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
@@ -47,23 +50,34 @@ export function CustomerSupport() {
               icon={Phone}
               title="Call operations"
               subtitle="Available 24 hours"
-              onPress={() => Linking.openURL('tel:+922100000000')}
+              onPress={() => Linking.openURL(`tel:${SUPPORT_PHONE}`)}
             />
           </View>
 
           <View style={split ? styles.col : undefined}>
             <Section title="Your cases">
-              {cases.map((c) => (
-                <Card key={c.id} style={styles.case}>
-                  <View style={styles.caseText}>
-                    <Text variant="heading">{c.type}</Text>
-                    <Text variant="label" tone="muted">
-                      {c.id}, booking {c.booking}
-                    </Text>
-                  </View>
-                  <Badge label={c.status} tone={c.tone} />
-                </Card>
-              ))}
+              {cases.isLoading ? (
+                <LoadingView />
+              ) : cases.error ? (
+                <ErrorView error={cases.error} onRetry={cases.refetch} />
+              ) : !cases.data?.items.length ? (
+                <Text tone="muted">No cases yet. Anything you report appears here with updates from our team.</Text>
+              ) : (
+                cases.data.items.map((c) => (
+                  <Pressable key={c.id} onPress={() => router.push(`/case/${c.id}` as Href)} accessibilityRole="button">
+                    <Card style={styles.case}>
+                      <View style={styles.caseText}>
+                        <Text variant="heading">{CASE_TYPE_LABEL[c.type]}</Text>
+                        <Text variant="label" tone="muted">
+                          {c.ref}
+                          {typeof c.booking === 'object' && c.booking ? `, booking ${c.booking.code}` : ''}
+                        </Text>
+                      </View>
+                      <Badge label={CASE_STATUS_LABEL[c.status].label} tone={CASE_STATUS_LABEL[c.status].tone} />
+                    </Card>
+                  </Pressable>
+                ))
+              )}
             </Section>
           </View>
         </View>

@@ -5,36 +5,51 @@ import { FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Header, Text } from '@/components/ui';
+import { ErrorView, Header, LoadingView, Text } from '@/components/ui';
+import { useBooking } from '@/features/api';
+import { useMessages, useSendMessage } from '@/features/ops';
 import { useResponsive } from '@/lib/use-responsive';
+import { useWatchBooking } from '@/services/socket';
+import { useAuth } from '@/stores/auth';
+import type { ChatMessage } from '@/types/api';
 import { colors, fonts, iconSize, iconStroke, radius, space } from '@/theme';
 
-type Msg = { id: string; mine: boolean; text: string; time: string };
+const quickReplies = {
+  customer: ['I am at the gate', 'Please come to the main entrance', 'Where are you now?', 'Thank you'],
+  staff: ['I am on my way', 'I have arrived', 'Please wait 5 minutes', 'Thank you'],
+};
 
-const quickReplies = ['I am at the gate', 'Please wait 5 minutes', 'Where should you park?', 'Thank you'];
+const time = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
 // Booking chat between customer and assigned staff. Numbers stay private.
-// TODO(backend): messages over the socket, stored per booking.
-export function Chat({ otherName, asStaff = false }: { otherName: string; asStaff?: boolean }) {
+export function Chat({ asStaff = false }: { asStaff?: boolean }) {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { tablet } = useResponsive();
+  const myId = useAuth((s) => s.user?.id);
+  const booking = useBooking(id);
+  const thread = useMessages(id);
+  const sendMsg = useSendMessage(id);
+  useWatchBooking(id);
   const [text, setText] = useState('');
-  const [msgs, setMsgs] = useState<Msg[]>(() =>
-    [
-      { id: '1', mine: false, text: 'Assalam o alaikum, I am on my way. ETA 18 minutes.', time: '4:42 PM' },
-      { id: '2', mine: true, text: 'Walaikum assalam, please come to the main entrance.', time: '4:43 PM' },
-      { id: '3', mine: false, text: 'Noted, see you there.', time: '4:43 PM' },
-    ].map((m) => (asStaff ? { ...m, mine: !m.mine } : m)),
-  );
-  const list = useRef<FlatList<Msg>>(null);
+  const list = useRef<FlatList<ChatMessage>>(null);
+
+  const b = booking.data?.booking;
+  const otherName = asStaff
+    ? typeof b?.customer === 'object'
+      ? b.customer.name
+      : 'Customer'
+    : b?.staff.map((s) => s.name.split(' ')[0]).join(', ') || 'Your captain';
+  const open = !!b && ['confirmed', 'arriving', 'on_duty'].includes(b.status);
 
   const send = (body = text) => {
     const t = body.trim();
-    if (!t) return;
-    const time = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-    setMsgs((m) => [...m, { id: String(Date.now()), mine: true, text: t, time }]);
-    setText('');
-    requestAnimationFrame(() => list.current?.scrollToEnd({ animated: true }));
+    if (!t || sendMsg.isPending) return;
+    sendMsg.mutate(t, {
+      onSuccess: () => {
+        setText('');
+        requestAnimationFrame(() => list.current?.scrollToEnd({ animated: true }));
+      },
+    });
   };
 
   const column = { width: '100%', maxWidth: tablet ? 720 : undefined, alignSelf: 'center' } as const;
@@ -43,29 +58,53 @@ export function Chat({ otherName, asStaff = false }: { otherName: string; asStaf
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <Header title={otherName} />
       <Text variant="caption" tone="muted" style={styles.sub}>
-        Booking {id}. Phone numbers stay private.
+        {b ? `Booking ${b.code}. ` : ''}Phone numbers stay private.
       </Text>
+      {thread.isLoading ? <LoadingView /> : thread.error ? <ErrorView error={thread.error} onRetry={thread.refetch} /> : null}
       <FlatList
         ref={list}
-        data={msgs}
+        data={thread.data?.messages ?? []}
         keyExtractor={(m) => m.id}
         contentContainerStyle={[styles.list, column]}
         onContentSizeChange={() => list.current?.scrollToEnd({ animated: false })}
-        renderItem={({ item }) => (
-          <View style={[styles.bubble, item.mine ? styles.mine : styles.theirs]}>
-            <Text style={{ color: item.mine ? colors.onPrimary : colors.text }}>{item.text}</Text>
-            <Text
-              variant="caption"
-              style={{ color: item.mine ? 'rgba(255,255,255,0.7)' : colors.textFaint, alignSelf: 'flex-end' }}>
-              {item.time}
+        ListEmptyComponent={
+          thread.data ? (
+            <Text tone="muted" style={{ textAlign: 'center' }}>
+              No messages yet. Say hello.
             </Text>
-          </View>
-        )}
+          ) : null
+        }
+        renderItem={({ item }) => {
+          const mine = item.from.id === myId;
+          return (
+            <View style={[styles.bubble, mine ? styles.mine : styles.theirs]}>
+              {!mine && asStaff === false && (b?.staff.length ?? 0) > 1 ? (
+                <Text variant="caption" tone="muted">
+                  {item.from.name}
+                </Text>
+              ) : null}
+              <Text style={{ color: mine ? colors.onPrimary : colors.text }}>{item.text}</Text>
+              <Text variant="caption" style={{ color: mine ? 'rgba(255,255,255,0.7)' : colors.textFaint, alignSelf: 'flex-end' }}>
+                {time(item.createdAt)}
+              </Text>
+            </View>
+          );
+        }}
       />
       <KeyboardStickyView offset={{ opened: 0, closed: 0 }}>
+        {!open ? (
+          <Text variant="caption" tone="muted" style={[styles.sub, { padding: space.lg }]}>
+            {b ? 'Chat is open while the booking is active.' : ''}
+          </Text>
+        ) : (
         <View style={column}>
+          {sendMsg.error ? (
+            <Text variant="caption" tone="danger" style={{ paddingHorizontal: space.lg }}>
+              {(sendMsg.error as Error).message}
+            </Text>
+          ) : null}
           <View style={styles.quick}>
-            {quickReplies.map((q) => (
+            {quickReplies[asStaff ? 'staff' : 'customer'].map((q) => (
               <Pressable key={q} onPress={() => send(q)} style={({ pressed }) => [styles.chip, pressed && { opacity: 0.6 }]}>
                 <Text variant="label">{q}</Text>
               </Pressable>
@@ -84,7 +123,7 @@ export function Chat({ otherName, asStaff = false }: { otherName: string; asStaf
             />
             <Pressable
               onPress={() => send()}
-              disabled={!text.trim()}
+              disabled={!text.trim() || sendMsg.isPending}
               accessibilityRole="button"
               accessibilityLabel="Send"
               style={[styles.send, !text.trim() && { opacity: 0.4 }]}>
@@ -92,6 +131,7 @@ export function Chat({ otherName, asStaff = false }: { otherName: string; asStaf
             </Pressable>
           </View>
         </View>
+        )}
       </KeyboardStickyView>
     </SafeAreaView>
   );

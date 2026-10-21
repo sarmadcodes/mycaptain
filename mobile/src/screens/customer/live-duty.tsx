@@ -5,10 +5,13 @@ import { useEffect, useState } from 'react';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 
 import { KARACHI, LiveMap } from '@/components/map/live-map';
+import { RateBooking } from '@/components/rate-booking';
+import { SosButton } from '@/components/sos-button';
 import { Avatar, Badge, Button, Card, DetailRow, ErrorView, Header, ListRow, LoadingView, Screen, Section, Text, TextField } from '@/components/ui';
 import { useBooking, useTransition } from '@/features/api';
 import { durationText, serviceName, statusInfo, whenText } from '@/features/booking/labels';
 import { formatPKR } from '@/features/booking/pricing';
+import { SUPPORT_PHONE } from '@/lib/config';
 import { errorMessage } from '@/services/api/client';
 import { useWatchBooking } from '@/services/socket';
 import { colors, iconSize, iconStroke, radius, space } from '@/theme';
@@ -49,6 +52,21 @@ function DutyBody({ booking: b, next }: { booking: ApiBooking; next: BookingStat
   const total = (b.price.billableHours || 1) * 60;
   const progress = Math.min(1, elapsed / total);
 
+  // Live positions sent by the staff phones; the map follows the first staff member.
+  const pos = b.locations?.[0];
+  const here = pos ? { latitude: pos.lat, longitude: pos.lng } : undefined;
+  const target = b.location.lat != null && b.location.lng != null ? { latitude: b.location.lat, longitude: b.location.lng } : undefined;
+  const tracking = b.status === 'arriving' || live;
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!tracking) return;
+    const t = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, [tracking]);
+  const seen = pos ? Math.max(0, Math.round((now - +new Date(pos.at)) / 60_000)) : null;
+  const breaks = (b.events ?? []).filter((e) => e.kind === 'break_start' || e.kind === 'break_end');
+  const onBreak = live && breaks.at(-1)?.kind === 'break_start';
+
   const act = async (to: BookingStatus, note?: string) => {
     setActionError(undefined);
     try {
@@ -59,19 +77,28 @@ function DutyBody({ booking: b, next }: { booking: ApiBooking; next: BookingStat
     }
   };
 
-  const caseLink = (type: string) => router.push({ pathname: '/case/new', params: { type, booking: b.code } });
+  const caseLink = (type: string) => router.push({ pathname: '/case/new', params: { type, bookingId: b.id } });
   const stepIndex = b.status === 'paid' ? 1 : STEPS.indexOf(b.status === 'closed' ? 'completed' : b.status);
 
   return (
     <Screen header={<Header title={b.code} />}>
       <View style={styles.stack}>
-        <LiveMap height={220} target={KARACHI} staff={live ? KARACHI : undefined} geofenceMeters={isDriver ? undefined : 60} />
+        <LiveMap height={220} target={target ?? here ?? KARACHI} staff={tracking ? here : undefined} geofenceMeters={isDriver || !target ? undefined : 60} />
+        {tracking ? (
+          <Text variant="caption" tone="muted">
+            {here
+              ? seen! <= 1
+                ? 'Live location, updated just now.'
+                : `Last location ${seen} min ago. It updates as they move.`
+              : 'Waiting for their location. It appears once they share it.'}
+          </Text>
+        ) : null}
 
         <Card style={{ gap: space.lg }}>
           <View style={styles.row}>
             <Avatar name={staff?.name ?? 'My Captain'} size={52} />
             <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
-              <Badge label={s.label} tone={s.tone} />
+              <Badge label={onBreak ? 'On a short break' : s.label} tone={onBreak ? 'amber' : s.tone} />
               <Text variant="heading">{staff?.name ?? s.customer}</Text>
               <Text variant="label" tone="muted">
                 {serviceName[b.service]}, {durationText(b)}
@@ -99,7 +126,7 @@ function DutyBody({ booking: b, next }: { booking: ApiBooking; next: BookingStat
           {staff ? (
             <View style={styles.actions}>
               <Action icon={MessageCircle} label="Message" onPress={() => router.push(`/chat/${b.id}`)} />
-              <Action icon={Phone} label="Call support" onPress={() => Linking.openURL('tel:+922100000000')} />
+              <Action icon={Phone} label="Call support" onPress={() => Linking.openURL(`tel:${SUPPORT_PHONE}`)} />
             </View>
           ) : null}
         </Card>
@@ -143,6 +170,14 @@ function DutyBody({ booking: b, next }: { booking: ApiBooking; next: BookingStat
           <Text variant="caption" tone="danger">
             {actionError}
           </Text>
+        ) : null}
+
+        {b.status === 'completed' || b.status === 'closed' ? <RateBooking booking={b} /> : null}
+
+        {tracking ? (
+          <Section title="Emergency">
+            <SosButton bookingId={b.id} />
+          </Section>
         ) : null}
 
         {next.includes('closed') ? (

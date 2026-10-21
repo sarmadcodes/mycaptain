@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { Banknote, Globe, MapPinned, Tags } from 'lucide-react-native';
 import { Linking } from 'react-native';
 
-import { PARTNER_PORTAL_URL } from '@/lib/mock-data';
+import { PARTNER_PORTAL_URL } from '@/lib/config';
 import { Profile } from '@/screens/shared/profile';
 
 const items = [

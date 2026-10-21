@@ -6,9 +6,13 @@ import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { KARACHI, LiveMap } from '@/components/map/live-map';
+import { SosButton } from '@/components/sos-button';
 import { Badge, Button, Card, DetailRow, EmptyView, ErrorView, ListRow, LoadingView, Text } from '@/components/ui';
 import { useBooking, useBookings } from '@/features/api';
 import { durationText, statusInfo, whenText } from '@/features/booking/labels';
+import { useDutyEvent } from '@/features/ops';
+import { currentPosition } from '@/lib/location';
+import { sharingText, useShareLocation } from '@/lib/tracking';
 import { useResponsive } from '@/lib/use-responsive';
 import { useWatchBooking } from '@/services/socket';
 import { useAuth } from '@/stores/auth';
@@ -31,11 +35,26 @@ export function StaffDuty() {
   const detail = useBooking(current?.id);
   useWatchBooking(current?.id);
 
-  const [onBreak, setOnBreak] = useState(false);
-  const [lastCheck, setLastCheck] = useState<string>();
   const [, tick] = useState(0);
   const b = detail.data?.booking;
   const live = b?.status === 'on_duty';
+  const myId = useAuth((s) => s.user?.id);
+  const event = useDutyEvent(b?.id ?? '');
+  const sharing = useShareLocation(b?.id, b?.status === 'arriving' || live);
+
+  // Break and check-in state comes from the server, so it survives restarts and other devices.
+  const mine = (b?.events ?? []).filter((e) => e.by === myId);
+  const breaks = mine.filter((e) => e.kind === 'break_start' || e.kind === 'break_end');
+  const onBreak = breaks.at(-1)?.kind === 'break_start';
+  const lastCheckIn = mine.filter((e) => e.kind === 'check_in').at(-1);
+  const me = b?.locations?.find((l) => l.staff === myId);
+  const here = me ? { latitude: me.lat, longitude: me.lng } : undefined;
+  const target = b?.location.lat != null && b.location.lng != null ? { latitude: b.location.lat, longitude: b.location.lng } : undefined;
+
+  const record = async (kind: 'check_in' | 'break_start' | 'break_end') => {
+    const p = kind === 'check_in' ? await currentPosition(5000) : null;
+    event.mutate({ kind, ...(p ? { lat: p.lat, lng: p.lng } : {}) });
+  };
   useEffect(() => {
     if (!live || onBreak) return;
     const t = setInterval(() => tick((n) => n + 1), 1000);
@@ -46,7 +65,7 @@ export function StaffDuty() {
 
   const split = r.tablet;
   const gap = r.compact ? space.lg : space.xl;
-  const now = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const hhmm = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
@@ -68,7 +87,12 @@ export function StaffDuty() {
         ) : (
           <View style={[split && styles.bodySplit, { gap: split ? space.xxl : gap }]}>
             <View style={[{ gap }, split && styles.col]}>
-              <LiveMap height={r.tablet ? 320 : 200} target={KARACHI} staff={live ? KARACHI : undefined} geofenceMeters={guard ? 60 : undefined} />
+              <LiveMap height={r.tablet ? 320 : 200} target={target ?? here ?? KARACHI} staff={here} geofenceMeters={guard && target ? 60 : undefined} />
+              {sharingText[sharing] ? (
+                <Text variant="caption" tone={sharing === 'denied' ? 'danger' : 'muted'}>
+                  {sharingText[sharing]}
+                </Text>
+              ) : null}
               {live ? (
                 <View style={styles.timer}>
                   <Text variant="caption" tone="muted">
@@ -85,26 +109,39 @@ export function StaffDuty() {
                 <DetailRow label="Starts" value={whenText(b.startAt)} />
                 <DetailRow label={guard ? 'Post' : 'Pickup'} value={b.location.point ? `${b.location.point}, ${b.location.address}` : b.location.address} />
                 <DetailRow label="Duration" value={durationText(b)} />
-                {guard && live ? <DetailRow label="Last check-in" value={lastCheck ?? 'At start'} /> : null}
+                {guard && live ? <DetailRow label="Last check-in" value={lastCheckIn ? hhmm(lastCheckIn.at) : 'At start'} /> : null}
               </Card>
 
               <DutyControls booking={b} next={detail.data.next} guard={guard} />
 
               {live ? (
                 <View style={{ gap: space.md }}>
-                  {/* TODO(phase 3): breaks and timed check-ins are recorded on the server with location. */}
-                  {guard ? <Button label="Complete check-in" variant="secondary" onPress={() => setLastCheck(now())} /> : null}
+                  {guard ? (
+                    <Button
+                      label="Complete check-in"
+                      variant="secondary"
+                      loading={event.isPending && event.variables?.kind === 'check_in'}
+                      onPress={() => record('check_in')}
+                    />
+                  ) : null}
                   <Button
                     label={onBreak ? 'End break' : 'Start break'}
                     variant="secondary"
+                    loading={event.isPending && event.variables?.kind !== 'check_in'}
                     icon={<Coffee color={colors.text} size={iconSize.md} strokeWidth={iconStroke} />}
-                    onPress={() => setOnBreak((v) => !v)}
+                    onPress={() => record(onBreak ? 'break_end' : 'break_start')}
                   />
+                  {event.error ? (
+                    <Text variant="caption" tone="danger">
+                      {(event.error as Error).message}
+                    </Text>
+                  ) : null}
                 </View>
               ) : null}
 
               <Button label="Open job details" variant="ghost" onPress={() => router.push(`/assignment/${b.id}`)} />
-              <ListRow icon={AlertTriangle} title="Report a problem" subtitle="Accident, breakdown or urgent help" onPress={() => router.push('/incident')} />
+              <ListRow icon={AlertTriangle} title="Report a problem" subtitle="Accident, breakdown or customer issue" onPress={() => router.push('/incident')} />
+              {b.status === 'arriving' || live ? <SosButton bookingId={b.id} /> : null}
             </View>
           </View>
         )}

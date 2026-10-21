@@ -3,7 +3,9 @@ import { CheckCircle2, CreditCard, Plus, Smartphone } from 'lucide-react-native'
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { Badge, Button, Card, DetailRow, Header, ListRow, Screen, Section, Text, TextField } from '@/components/ui';
+import { Badge, Button, Card, DetailRow, EmptyView, ErrorView, Header, ListRow, LoadingView, Screen, Section, Text, TextField } from '@/components/ui';
+import { useBookings } from '@/features/api';
+import { bookingTitle, isLive, statusInfo } from '@/features/booking/labels';
 import { SwitchRow } from '@/components/ui/switch-row';
 import { formatPKR } from '@/features/booking/pricing';
 import { useBookingDraft } from '@/features/booking/store';
@@ -22,7 +24,6 @@ export function PersonalDetails() {
   const [saved, setSaved] = useState(false);
   if (!user) return null;
 
-  // TODO(backend): PATCH /me
   const save = async () => {
     setError(undefined);
     setSaving(true);
@@ -99,78 +100,107 @@ export function PaymentMethods() {
   );
 }
 
-const invoices = [
-  { id: 'INV-1042', label: 'MC-2048, driver 4 hours', date: '4 Oct 2026', amount: 4200, status: 'Paid' },
-  { id: 'INV-1037', label: '6-month driver plan, October', date: '1 Oct 2026', amount: 187200, status: 'Paid' },
-  { id: 'INV-1031', label: 'MC-2031, driver 1 day', date: '24 Sep 2026', amount: 7180, status: 'Paid' },
-  { id: 'INV-1022', label: 'MC-2017, armed gunman 4 hours', date: '12 Sep 2026', amount: 5040, status: 'Paid' },
-];
+const day = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
+// Receipts for every booking that has been paid.
 export function Invoices() {
+  const { data, isLoading, error, refetch } = useBookings();
+  const paid = (data?.items ?? []).filter((b) => b.paidAt);
   return (
     <Screen header={<Header title="Invoices and receipts" />}>
-      <View style={{ gap: space.md }}>
-        {invoices.map((i) => (
-          <Card key={i.id} style={styles.invoice}>
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text variant="heading">{formatPKR(i.amount)}</Text>
-              <Text variant="label" tone="muted">
-                {i.label}
-              </Text>
-              <Text variant="caption" tone="faint">
-                {i.id}, {i.date}
-              </Text>
-            </View>
-            <Badge label={i.status} tone="green" />
-          </Card>
-        ))}
-      </View>
+      {isLoading ? (
+        <LoadingView />
+      ) : error ? (
+        <ErrorView error={error} onRetry={refetch} />
+      ) : !paid.length ? (
+        <EmptyView title="No receipts yet" body="Every paid booking gets a receipt here." />
+      ) : (
+        <View style={{ gap: space.md }}>
+          {paid.map((b) => (
+            <Card key={b.id} style={styles.invoice}>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text variant="heading">{formatPKR(b.price.total)}</Text>
+                <Text variant="label" tone="muted">
+                  {b.code}, {bookingTitle(b)}
+                </Text>
+                <Text variant="caption" tone="faint">
+                  Paid {day(b.paidAt!)}, includes {formatPKR(b.price.fee)} service fee
+                </Text>
+              </View>
+              <Badge label={b.status === 'cancelled' ? 'Cancelled' : 'Paid'} tone={b.status === 'cancelled' ? 'amber' : 'green'} />
+            </Card>
+          ))}
+        </View>
+      )}
     </Screen>
   );
 }
 
+const addMonths = (iso: string, n: number) => {
+  const d = new Date(iso);
+  d.setMonth(d.getMonth() + n);
+  return d.toISOString();
+};
+
+// Monthly plans and long-term contracts.
 export function Contracts() {
+  const { data, isLoading, error, refetch } = useBookings();
+  const contracts = (data?.items ?? []).filter((b) => b.plan === 'monthly' || b.plan === 'contract');
   return (
     <Screen header={<Header title="Contracts" />}>
-      <View style={styles.form}>
-        <Card style={{ gap: space.md }}>
-          <View style={styles.between}>
-            <Badge label="Active" tone="green" />
-            <Text variant="caption" tone="muted">
-              CON-018
-            </Text>
-          </View>
-          <Text variant="title">6-month driver plan</Text>
-          <View>
-            <DetailRow label="Regular captain" value="Ahmed Raza" />
-            <DetailRow label="Schedule" value="Mon to Sat, 9 AM to 5 PM" />
-            <DetailRow label="Started" value="1 Jul 2026" />
-            <DetailRow label="Ends" value="31 Dec 2026" />
-            <DetailRow label="Next invoice" value="1 Nov 2026" />
-            <DetailRow label="Monthly amount" value={formatPKR(187200)} strong />
-          </View>
-        </Card>
-        <Button
-          label="Renew or change terms"
-          variant="secondary"
-          onPress={() => {
-            // Pre-fill a driver contract for the same captain; the customer adjusts it on the schedule screen.
-            useBookingDraft.getState().reset('driver');
-            useBookingDraft
-              .getState()
-              .set({
-                plan: 'contract',
-                start: 'later',
-                staffId: 'd1',
-                vehicle: { class: 'suv', makeModel: 'Toyota Fortuner', engine: '2700+', transmission: 'automatic', notes: '' },
-              });
-            router.push('/book/schedule');
-          }}
+      {isLoading ? (
+        <LoadingView />
+      ) : error ? (
+        <ErrorView error={error} onRetry={refetch} />
+      ) : !contracts.length ? (
+        <EmptyView
+          title="No contracts"
+          body="Monthly plans and 6 or 12-month contracts appear here."
+          action={{ label: 'Start a contract', onPress: () => router.push('/book/schedule') }}
         />
-        <Section title="Replacement history">
-          <ListRow icon={CheckCircle2} title="Bilal Khan covered 2 days" subtitle="18 to 19 Sep, Ahmed on leave" />
-        </Section>
-      </View>
+      ) : (
+        <View style={styles.form}>
+          {contracts.map((b) => {
+            const months = b.plan === 'monthly' ? 1 : (b.contractMonths ?? 6);
+            const active = isLive(b.status);
+            return (
+              <Card key={b.id} style={{ gap: space.md }}>
+                <View style={styles.between}>
+                  <Badge label={statusInfo[b.status].label} tone={active ? 'green' : statusInfo[b.status].tone} />
+                  <Text variant="caption" tone="muted">
+                    {b.code}
+                  </Text>
+                </View>
+                <Text variant="title">{bookingTitle(b)}</Text>
+                <View>
+                  {b.staff.length ? <DetailRow label="Regular staff" value={b.staff.map((x) => x.name).join(', ')} /> : null}
+                  <DetailRow label="Starts" value={day(b.startAt)} />
+                  <DetailRow label="Ends" value={day(addMonths(b.startAt, months))} />
+                  <DetailRow label="Location" value={b.location.address} />
+                  <DetailRow label="Total" value={formatPKR(b.price.total)} strong />
+                </View>
+                <Button
+                  label="Renew or change terms"
+                  variant="secondary"
+                  onPress={() => {
+                    // Pre-fill the same service and staff; the customer adjusts it on the schedule screen.
+                    useBookingDraft.getState().reset(b.service);
+                    useBookingDraft.getState().set({
+                      plan: b.plan,
+                      start: 'later',
+                      staffId: b.staff[0]?.id,
+                      ...(b.vehicle
+                        ? { vehicle: { class: b.vehicle.class, makeModel: b.vehicle.makeModel ?? '', engine: '', transmission: b.vehicle.transmission, notes: b.vehicle.notes ?? '' } }
+                        : {}),
+                    });
+                    router.push('/book/schedule');
+                  }}
+                />
+              </Card>
+            );
+          })}
+        </View>
+      )}
     </Screen>
   );
 }

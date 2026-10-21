@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { Building2, CalendarCheck, FileText, History, LifeBuoy } from 'lucide-react-native';
 import { Linking } from 'react-native';
 
+import { SUPPORT_PHONE } from '@/lib/config';
 import { Profile } from '@/screens/shared/profile';
 
 const items = [
@@ -18,7 +19,7 @@ const items = [
     icon: LifeBuoy,
     title: 'Contact operations',
     subtitle: 'Available 24 hours',
-    onPress: () => Linking.openURL('tel:+922100000000'),
+    onPress: () => Linking.openURL(`tel:${SUPPORT_PHONE}`),
   },
 ];
 

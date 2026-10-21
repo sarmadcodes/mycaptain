@@ -3,7 +3,8 @@ import { io, type Socket } from 'socket.io-client';
 
 import { queryClient } from '@/lib/query-client';
 import { useAuth } from '@/stores/auth';
-import type { ApiBooking } from '@/types/api';
+import { addMessage } from '@/features/ops';
+import type { ApiBooking, ChatMessage, StaffLocation } from '@/types/api';
 
 const SOCKET_URL = process.env.EXPO_PUBLIC_SOCKET_URL ?? 'http://localhost:4000';
 
@@ -31,6 +32,19 @@ function connect(token: string) {
   socket.on('company:new', () => queryClient.invalidateQueries({ queryKey: ['admin'] }));
   socket.on('company:updated', () => queryClient.invalidateQueries({ queryKey: ['admin'] }));
   socket.on('rates:updated', () => queryClient.invalidateQueries({ queryKey: ['rates'] }));
+  socket.on('message:new', (m: ChatMessage) => addMessage(queryClient, m));
+  socket.on('notification:new', () => queryClient.invalidateQueries({ queryKey: ['notifications'] }));
+  // Live staff position: patch the cached booking so maps move without refetching.
+  socket.on('location', (l: StaffLocation & { booking: string }) => {
+    queryClient.setQueryData(['booking', l.booking], (old: { booking: ApiBooking } | undefined) => {
+      if (!old) return old;
+      const others = (old.booking.locations ?? []).filter((x) => x.staff !== l.staff);
+      return { ...old, booking: { ...old.booking, locations: [...others, l] } };
+    });
+  });
+  socket.on('sos:new', () => queryClient.invalidateQueries({ queryKey: ['sos'] }));
+  socket.on('sos:updated', () => queryClient.invalidateQueries({ queryKey: ['sos'] }));
+  socket.on('case:new', () => queryClient.invalidateQueries({ queryKey: ['cases'] }));
 }
 
 export function disconnectSocket() {
