@@ -56,6 +56,11 @@ authRouter.post(
   ),
   async (req, res) => {
     const { phone, code, name, email } = req.body as { phone: string; code: string; name?: string; email?: string };
+    // Staff, partner and admin accounts never sign in with a code: they need their password.
+    const existing = await UserModel.findOne({ phone }).select('role').lean();
+    if (existing && existing.role !== 'customer') {
+      throw new AppError(400, 'use_password', 'This number belongs to a staff account. Use staff sign in.');
+    }
     await checkOtp(phone, code);
     let user = await UserModel.findOne({ phone });
     if (!user) {

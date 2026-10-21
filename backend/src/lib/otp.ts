@@ -13,7 +13,12 @@ const MAX_ATTEMPTS = 5;
 
 const digest = (phone: string, code: string) => createHmac('sha256', env.OTP_PEPPER).update(`${phone}:${code}`).digest();
 
+const isTestPhone = (phone: string) => !isProd && env.OTP_TEST_PHONES.includes(phone);
+
 export async function sendOtp(phone: string) {
+  // Test numbers: no SMS, no limits; the fixed test code is accepted.
+  if (isTestPhone(phone)) return { resendIn: RESEND_COOLDOWN, expiresIn: CODE_TTL, devCode: env.OTP_TEST_CODE };
+
   const cooldown = await kv.ttl(`otp:cd:${phone}`);
   if (cooldown > 0) throw tooMany(`Wait ${cooldown} seconds before requesting another code.`, cooldown);
   const sent = await kv.incr(`otp:hr:${phone}`, 3600);
@@ -36,6 +41,10 @@ export async function sendOtp(phone: string) {
 }
 
 export async function checkOtp(phone: string, code: string) {
+  if (isTestPhone(phone)) {
+    if (code !== env.OTP_TEST_CODE) throw new AppError(400, 'otp_invalid', 'That code is not correct.');
+    return;
+  }
   const stored = await kv.get(`otp:${phone}`);
   if (!stored) throw new AppError(400, 'otp_expired', 'This code has expired. Request a new one.');
 

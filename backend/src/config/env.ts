@@ -1,6 +1,8 @@
 import 'dotenv/config';
 import { z } from 'zod';
 
+import { normalizePkMobile } from '@/lib/phone';
+
 const secret = z.string().min(32, 'must be at least 32 characters');
 
 const schema = z
@@ -32,6 +34,12 @@ const schema = z
     CLOUDINARY_API_SECRET: z.string().optional(),
 
     SMS_PROVIDER: z.enum(['console', 'twilio', 'http']).default('console'),
+    // Test numbers that skip SMS and accept OTP_TEST_CODE (development and testing only).
+    OTP_TEST_PHONES: z
+      .string()
+      .default('')
+      .transform((s) => s.split(',').map((p) => normalizePkMobile(p.trim())).filter((p): p is string => !!p)),
+    OTP_TEST_CODE: z.string().regex(/^\d{6}$/, 'must be 6 digits').default('123456'),
     SMS_DAILY_LIMIT: z.coerce.number().int().positive().default(2000),
     TWILIO_ACCOUNT_SID: z.string().optional(),
     TWILIO_AUTH_TOKEN: z.string().optional(),
@@ -63,6 +71,9 @@ const schema = z
     if (!e.REDIS_URL) ctx.addIssue({ code: 'custom', path: ['REDIS_URL'], message: 'required in production' });
     for (const k of ['CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET'] as const) {
       if (!e[k]) ctx.addIssue({ code: 'custom', path: [k], message: 'required in production' });
+    }
+    if (e.OTP_TEST_PHONES.length) {
+      ctx.addIssue({ code: 'custom', path: ['OTP_TEST_PHONES'], message: 'test numbers that skip SMS are not allowed in production' });
     }
     if (e.SMS_PROVIDER === 'console') {
       ctx.addIssue({ code: 'custom', path: ['SMS_PROVIDER'], message: 'console SMS is not allowed in production' });

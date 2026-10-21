@@ -85,3 +85,10 @@ describe('password login', () => {
     await api().post('/api/v1/auth/login').send({ identifier: c.phone, password: 'anything' }).expect(401);
   });
 });
+
+describe('otp and password accounts', () => {
+  it('never signs a staff or admin account in with a code', async () => {
+    const admin = await passwordUser('admin');
+    await api().post('/api/v1/auth/otp/verify').send({ phone: admin.phone, code: '123456' }).expect(400);
+  });
+});
