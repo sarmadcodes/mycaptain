@@ -13,7 +13,7 @@ async function main() {
 
   const server = createServer(createApp());
   attachRealtime(server);
-  server.listen(env.PORT, () => logger.info(`api listening on :${env.PORT}`));
+  server.listen(env.PORT, env.HOST, () => logger.info(`api listening on ${env.HOST}:${env.PORT}`));
 
   // Graceful shutdown: stop accepting, finish in-flight requests, close connections.
   let closing = false;

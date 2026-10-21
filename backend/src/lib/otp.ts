@@ -23,7 +23,13 @@ export async function sendOtp(phone: string) {
   await kv.set(`otp:${phone}`, digest(phone, code).toString('base64'), CODE_TTL);
   await kv.del(`otp:att:${phone}`);
   await kv.set(`otp:cd:${phone}`, '1', RESEND_COOLDOWN);
-  await sms.send(phone, `${code} is your My Captain code. It expires in 5 minutes. Do not share it.`);
+  try {
+    await sms.send(phone, `${code} is your My Captain code. It expires in 5 minutes. Do not share it.`);
+  } catch (err) {
+    // Nothing was delivered: let the person retry straight away.
+    await Promise.all([kv.del(`otp:${phone}`), kv.del(`otp:cd:${phone}`)]);
+    throw err;
+  }
 
   // Development and tests get the code back to speed up testing; never in production.
   return { resendIn: RESEND_COOLDOWN, expiresIn: CODE_TTL, ...(isProd ? {} : { devCode: code }) };
