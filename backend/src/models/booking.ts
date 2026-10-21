@@ -57,7 +57,14 @@ export type Booking = {
   paidAt?: Date;
   startedAt?: Date;
   completedAt?: Date;
+  events: DutyEvent[];
+  locations: StaffLocation[];
+  rating?: { stars: number; comment?: string; at: Date };
 };
+
+export const DUTY_EVENTS = ['check_in', 'break_start', 'break_end', 'sos'] as const;
+export type DutyEvent = { kind: (typeof DUTY_EVENTS)[number]; at: Date; by: Types.ObjectId; lat?: number; lng?: number; note?: string };
+export type StaffLocation = { staff: Types.ObjectId; lat: number; lng: number; accuracy?: number; heading?: number; at: Date };
 
 export type BookingDoc = HydratedDocument<Booking>;
 
@@ -115,6 +122,30 @@ const schema = new Schema<Booking>(
     paidAt: Date,
     startedAt: Date,
     completedAt: Date,
+    events: [
+      {
+        _id: false,
+        kind: { type: String, enum: DUTY_EVENTS, required: true },
+        at: { type: Date, default: () => new Date() },
+        by: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+        lat: Number,
+        lng: Number,
+        note: { type: String, maxlength: 300 },
+      },
+    ],
+    // Latest position per staff member while arriving or on duty (one entry each, overwritten).
+    locations: [
+      {
+        _id: false,
+        staff: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+        lat: { type: Number, required: true },
+        lng: { type: Number, required: true },
+        accuracy: Number,
+        heading: Number,
+        at: { type: Date, required: true },
+      },
+    ],
+    rating: { stars: { type: Number, min: 1, max: 5 }, comment: { type: String, maxlength: 500 }, at: Date },
   },
   { timestamps: true, toJSON },
 );

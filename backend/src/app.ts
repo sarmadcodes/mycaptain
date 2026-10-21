@@ -11,6 +11,7 @@ import { errorHandler, notFoundHandler } from '@/middleware/error';
 import { apiLimiter } from '@/middleware/rate-limit';
 import { authRouter } from '@/modules/auth';
 import { bookingsRouter } from '@/modules/bookings';
+import { opsRouter } from './modules/ops';
 import { catalogRouter } from '@/modules/catalog';
 import { companiesRouter } from '@/modules/companies';
 
@@ -44,6 +45,7 @@ export function createApp() {
   api.use('/companies', companiesRouter);
   api.use('/bookings', bookingsRouter);
   api.use('/', catalogRouter);
+  api.use('/', opsRouter);
   app.use('/api/v1', api);
 
   app.use(notFoundHandler);

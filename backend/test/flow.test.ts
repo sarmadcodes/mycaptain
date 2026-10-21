@@ -6,45 +6,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { attachRealtime, closeRealtime } from '@/lib/realtime';
 
-import { api, app, application, auth, customer, inTwoHours, passwordUser, PNG } from './helpers';
+import { api, app, application, approvedPartner, auth, customer, inTwoHours, passwordUser, PNG } from './helpers';
 
 const v1 = '/api/v1';
-
-// Approved partner with one driver, two guards and one gunman.
-async function approvedPartner() {
-  const admin = await passwordUser('admin');
-  const applied = await api().post(`${v1}/companies/applications`).send(application()).expect(201);
-  const partnerToken = applied.body.accessToken as string;
-  const companyId = applied.body.company.id as string;
-
-  // Approval needs the documents.
-  const early = await api().post(`${v1}/companies/${companyId}/review`).set(auth(admin.token)).send({ decision: 'approve' }).expect(400);
-  expect(early.body.error.details.missing).toContain('registration');
-
-  for (const kind of ['registration', 'ntn', 'security_licence']) {
-    await api().post(`${v1}/companies/me/documents`).set(auth(partnerToken)).field('kind', kind).attach('file', PNG, 'doc.png').expect(201);
-  }
-  const approved = await api().post(`${v1}/companies/${companyId}/review`).set(auth(admin.token)).send({ decision: 'approve' }).expect(200);
-  expect(approved.body.company.status).toBe('approved');
-
-  const mk = async (staffKind: string, phone: string) =>
-    (
-      await api()
-        .post(`${v1}/companies/me/staff`)
-        .set(auth(partnerToken))
-        .send({ name: `${staffKind} ${phone.slice(-3)}`, phone, staffKind, password: 'staff-password-1' })
-        .expect(201)
-    ).body.staff;
-  const driver = await mk('driver', '3451110001');
-  const guard1 = await mk('guard', '3451110002');
-  const guard2 = await mk('guard', '3451110003');
-  const gunman = await mk('gunman', '3451110004');
-
-  const login = async (phone: string) =>
-    (await api().post(`${v1}/auth/login`).send({ identifier: phone, password: 'staff-password-1' }).expect(200)).body.accessToken as string;
-
-  return { admin, partnerToken, companyId, driver, guard1, guard2, gunman, driverToken: await login('3451110001'), login };
-}
 
 describe('partner onboarding', () => {
   it('rejects documents with a fake file type', async () => {

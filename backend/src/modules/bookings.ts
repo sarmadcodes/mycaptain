@@ -3,6 +3,7 @@ import { Types, type QueryFilter } from 'mongoose';
 import { z } from 'zod';
 
 import { AppError, badRequest, notFound } from '@/lib/errors';
+import { notify, type NotifyInput } from '@/lib/notify';
 import { emit } from '@/lib/realtime';
 import { me, requireAuth, requireRole, type AuthUser } from '@/middleware/auth';
 import { body, parse } from '@/middleware/validate';
@@ -106,7 +107,7 @@ async function prepare(v: BookingInput) {
 }
 
 // What every party sees. Phone numbers stay private (chat and calls go through the platform).
-async function view(b: BookingDoc) {
+export async function view(b: BookingDoc) {
   await b.populate([
     { path: 'staff', select: 'name staffKind avatarUrl role' },
     { path: 'company', select: 'legalName tradingName ref' },
@@ -116,7 +117,7 @@ async function view(b: BookingDoc) {
   return b.toJSON();
 }
 
-function canSee(b: Pick<Booking, 'customer' | 'company' | 'staff'>, u: AuthUser) {
+export function canSee(b: Pick<Booking, 'customer' | 'company' | 'staff'>, u: AuthUser) {
   if (u.role === 'admin') return true;
   if (u.role === 'customer') return String(b.customer) === u.id;
   if (u.role === 'partner') return !!u.company && String(b.company) === u.company;
@@ -124,9 +125,31 @@ function canSee(b: Pick<Booking, 'customer' | 'company' | 'staff'>, u: AuthUser)
 }
 
 // Id of a ref whether or not it has been populated.
-const refId = (r: unknown) => String((r as { _id?: Types.ObjectId })?._id ?? r);
+export const refId = (r: unknown) => String((r as { _id?: Types.ObjectId })?._id ?? r);
 
-async function broadcast(b: BookingDoc, event = 'booking:updated') {
+// Tells the people affected by a status change. Partners see everything live on their dashboard.
+const STATUS_NOTE: Partial<Record<BookingStatus, (b: BookingDoc) => { to: 'customer' | 'staff' | 'both'; title: string; body: string; tone: NotifyInput['tone'] }>> = {
+  confirmed: (b) => ({ to: 'both', title: `Booking ${b.code} confirmed`, body: 'Your staff have been assigned.', tone: 'green' }),
+  arriving: (b) => ({ to: 'customer', title: 'Your staff are on the way', body: `Booking ${b.code}. Follow them live in the app.`, tone: 'blue' }),
+  on_duty: (b) => ({ to: 'customer', title: 'Duty started', body: `Booking ${b.code} is now on duty.`, tone: 'green' }),
+  completed: (b) => ({ to: 'customer', title: 'Duty completed', body: `How was booking ${b.code}? Rate your experience.`, tone: 'green' }),
+  cancelled: (b) => ({ to: 'both', title: `Booking ${b.code} cancelled`, body: b.cancelReason ?? 'This booking was cancelled.', tone: 'red' }),
+};
+
+export async function notifyStatus(b: BookingDoc, previous: BookingStatus, actorId: string) {
+  if (b.status === previous) return;
+  const n = STATUS_NOTE[b.status]?.(b);
+  if (!n) return;
+  const customer = refId(b.customer);
+  const staff = b.staff.map(refId);
+  const to = n.to === 'customer' ? [customer] : n.to === 'staff' ? staff : [customer, ...staff];
+  await notify(
+    to.filter((x) => x !== actorId),
+    { title: n.title, body: n.body, tone: n.tone, link: { kind: 'booking', id: b.id } },
+  );
+}
+
+export async function broadcast(b: BookingDoc, event = 'booking:updated') {
   // Work out recipients before view() populates the refs.
   const to = {
     users: [refId(b.customer), ...b.staff.map(refId)],
@@ -139,7 +162,7 @@ async function broadcast(b: BookingDoc, event = 'booking:updated') {
   return payload;
 }
 
-async function load(id: string, u: AuthUser) {
+export async function loadBooking(id: string, u: AuthUser) {
   const b = await BookingModel.findById(id);
   if (!b || !canSee(b, u)) throw notFound('Booking');
   return b;
@@ -232,7 +255,7 @@ bookingsRouter.get('/', requireAuth, async (req, res) => {
 bookingsRouter.get('/:id', requireAuth, async (req, res) => {
   const { id } = parse(z.object({ id: objectId }), req.params);
   const u = me(req);
-  const b = await load(id, u);
+  const b = await loadBooking(id, u);
   res.json({ booking: await view(b), next: nextStatuses(b.status, u.role) });
 });
 
@@ -245,13 +268,14 @@ bookingsRouter.post(
     const { id } = parse(z.object({ id: objectId }), req.params);
     const { to, note } = req.body as { to: BookingStatus; note?: string };
     const u = me(req);
-    const b = await load(id, u);
+    const b = await loadBooking(id, u);
 
     if (!canTransition(b.status, to, u.role)) {
       throw new AppError(409, 'invalid_transition', `This booking cannot move from ${b.status.replace('_', ' ')} to ${to.replace('_', ' ')}.`);
     }
     if (to === 'cancelled' && !note) throw badRequest('Give a reason for cancelling.');
 
+    const previous = b.status;
     pushHistory(b, to, u, note);
     if (to === 'cancelled') b.cancelReason = note;
     if (to === 'on_duty') b.startedAt = new Date();
@@ -262,6 +286,7 @@ bookingsRouter.post(
       pushHistory(b, 'assigning', u, 'Waiting for partner assignment');
     }
     await b.save();
+    await notifyStatus(b, previous, u.id);
     res.json({ booking: await broadcast(b) });
   },
 );
@@ -275,7 +300,7 @@ bookingsRouter.post(
   async (req, res) => {
     const { id } = parse(z.object({ id: objectId }), req.params);
     const u = me(req);
-    const b = await load(id, u);
+    const b = await loadBooking(id, u);
     if (b.status !== 'assigning') throw new AppError(409, 'invalid_state', 'Only bookings waiting for assignment can be given to a company.');
     const company = await CompanyModel.findOne({ _id: (req.body as { companyId: string }).companyId, status: 'approved' }).select('_id legalName services');
     if (!company) throw badRequest('Choose an approved partner company.');
@@ -304,7 +329,7 @@ bookingsRouter.post(
   async (req, res) => {
     const { id } = parse(z.object({ id: objectId }), req.params);
     const u = me(req);
-    const b = await load(id, u);
+    const b = await loadBooking(id, u);
     if (!b.company) throw new AppError(409, 'invalid_state', 'Assign a company first.');
     if (!['assigning', 'confirmed'].includes(b.status)) throw new AppError(409, 'invalid_state', 'Staff can only be changed before the duty starts.');
 
@@ -328,6 +353,7 @@ bookingsRouter.post(
     if (!ok) throw badRequest(message);
 
     const before = b.staff.map(String);
+    const previous = b.status;
     b.staff = staff.map((s) => s._id);
     if (b.status === 'assigning') pushHistory(b, 'confirmed', u, 'Staff assigned');
     else b.history.push({ status: b.status, at: new Date(), by: new Types.ObjectId(u.id), byRole: u.role, note: 'Staff changed' });
@@ -336,6 +362,11 @@ bookingsRouter.post(
     // Removed staff lose the booking from their list.
     const removed = before.filter((s) => !ids.includes(s));
     if (removed.length) emit('booking:removed', { id: b.id }, { users: removed });
+    await notifyStatus(b, previous, u.id);
+    const added = ids.filter((s) => !before.includes(s));
+    if (previous !== 'assigning' && added.length) {
+      await notify(added, { title: `New duty ${b.code}`, body: `${b.location.address}, starts ${b.startAt.toLocaleString('en-PK', { timeZone: 'Asia/Karachi' })}.`, link: { kind: 'booking', id: b.id } });
+    }
     res.json({ booking: await broadcast(b) });
   },
 );
