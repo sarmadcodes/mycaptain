@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { Schema, Types, model, type HydratedDocument } from 'mongoose';
 import { z } from 'zod';
 
+import { partnerUrl, sendEmail } from '@/lib/email';
 import { AppError, badRequest, notFound } from '@/lib/errors';
 import { notify } from '@/lib/notify';
 import { emit } from '@/lib/realtime';
@@ -128,6 +129,16 @@ payoutsRouter.post(
       body: `PKR ${p.amount.toLocaleString('en-PK')} transferred, reference ${p.reference}.`,
       tone: 'green',
     });
+    const company = await CompanyModel.findById(p.company).select('contact.email').lean();
+    if (company) {
+      await sendEmail({
+        to: company.contact.email,
+        subject: `Payout sent: PKR ${p.amount.toLocaleString('en-PK')}`,
+        heading: 'Your payout is on its way',
+        lines: [`PKR ${p.amount.toLocaleString('en-PK')} for ${p.count} completed booking${p.count === 1 ? '' : 's'}.`, `Bank reference: ${p.reference}.`],
+        cta: { label: 'View statement', url: partnerUrl('/dashboard/payouts') },
+      });
+    }
     emit('payouts:updated', {}, { admins: true, companies: [String(p.company)] });
     res.json({ payout: p });
   },

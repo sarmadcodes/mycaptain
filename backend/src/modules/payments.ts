@@ -5,6 +5,7 @@ import { Schema, Types, model } from 'mongoose';
 import { z } from 'zod';
 
 import { env } from '@/config/env';
+import { sendEmail } from '@/lib/email';
 import { AppError } from '@/lib/errors';
 import { notify } from '@/lib/notify';
 import { me, requireAuth, requireRole } from '@/middleware/auth';
@@ -81,6 +82,19 @@ paymentsRouter.post(
     b.status = 'assigning';
     await b.save();
 
+    const customer = await UserModel.findById(u.id).select('name email').lean();
+    if (customer?.email) {
+      await sendEmail({
+        to: customer.email,
+        subject: `Receipt for booking ${b.code}`,
+        heading: 'Payment received',
+        lines: [
+          `Booking ${b.code}: PKR ${b.price.total.toLocaleString('en-PK')} (includes PKR ${b.price.fee.toLocaleString('en-PK')} service fee).`,
+          `Receipt ${payment.reference}${payment.provider === 'demo' ? ', demo payment: no money was charged' : ''}.`,
+          'We are assigning your staff now and will update you in the app.',
+        ],
+      });
+    }
     const admins = await UserModel.find({ role: 'admin', status: 'active' }).select('_id').lean();
     await notify(admins.map((a) => String(a._id)), {
       title: `Booking ${b.code} paid`,

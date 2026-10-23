@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { signedUrl } from '@/lib/cloudinary';
 import { AppError, badRequest, forbidden, notFound } from '@/lib/errors';
 import { pkMobile } from '@/lib/phone';
+import { partnerUrl, sendEmail } from '@/lib/email';
 import { emit } from '@/lib/realtime';
 import { me, requireAuth, requireRole } from '@/middleware/auth';
 import { authLimiter } from '@/middleware/rate-limit';
@@ -87,6 +88,16 @@ companiesRouter.post('/applications', authLimiter, body(applicationSchema), asyn
     throw e;
   }
   emit('company:new', publicCompany(company), { admins: true });
+  await sendEmail({
+    to: company.contact.email,
+    subject: `Application received: ${company.ref}`,
+    heading: 'We received your application',
+    lines: [
+      `Thank you for applying to partner with My Captain. Your reference is ${company.ref}.`,
+      'Upload your registration, NTN and (for security services) licence documents if you have not already. We review applications within 3 to 5 working days.',
+    ],
+    cta: { label: 'Open your dashboard', url: partnerUrl('/dashboard') },
+  });
   res.status(201).json({ company: publicCompany(company), ...(await issueSession(owner)) });
 });
 
@@ -290,6 +301,13 @@ companiesRouter.post(
     if (decision === 'suspend') await UserModel.updateMany({ company: company._id }, { $inc: { tokenVersion: 1 } });
 
     emit('company:updated', publicCompany(company), { admins: true, companies: [company.id] });
+    const mail = {
+      approve: { subject: 'Your company is approved', heading: 'Welcome to My Captain', lines: ['Your company is approved. Add your drivers and guards from the Staff page so we can start assigning bookings.'] },
+      request_changes: { subject: 'Changes needed on your application', heading: 'A few changes are needed', lines: [note ?? '', 'Update your documents and we will review again.'] },
+      reject: { subject: 'Your application was not approved', heading: 'Application not approved', lines: [note ?? '', 'Reply to partners@mycaptain.pk if you have questions.'] },
+      suspend: { subject: 'Your company is suspended', heading: 'Company suspended', lines: [note ?? '', 'Your staff cannot sign in until this is resolved. Contact partners@mycaptain.pk.'] },
+    }[decision];
+    await sendEmail({ to: company.contact.email, ...mail, lines: mail.lines.filter(Boolean), cta: { label: 'Open your dashboard', url: partnerUrl('/dashboard') } });
     res.json({ company: publicCompany(company) });
   },
 );

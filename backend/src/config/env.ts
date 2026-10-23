@@ -42,6 +42,10 @@ const schema = z
     OTP_TEST_CODE: z.string().regex(/^\d{6}$/, 'must be 6 digits').default('123456'),
     // demo: checkout succeeds instantly without moving money. Real providers come later.
     // Background jobs (auto-cancel, reminders, expiry warnings, weekly payouts).
+    EMAIL_PROVIDER: z.enum(['console', 'resend']).default('console'),
+    RESEND_API_KEY: z.string().optional(),
+    EMAIL_FROM: z.string().default('My Captain <no-reply@mycaptain.pk>'),
+    PARTNER_SITE_URL: z.url().default('http://localhost:3010'),
     PUSH_ENABLED: z.stringbool().default(true),
     EXPO_ACCESS_TOKEN: z.string().optional(),
     JOBS_ENABLED: z.stringbool().default(true),
@@ -70,6 +74,7 @@ const schema = z
       if (!e.TWILIO_FROM && !e.TWILIO_MESSAGING_SERVICE_SID) need(['TWILIO_FROM'], 'set TWILIO_FROM or TWILIO_MESSAGING_SERVICE_SID');
     }
     if (e.SMS_PROVIDER === 'http') need(['SMS_HTTP_URL'], 'required for SMS_PROVIDER=http');
+    if (e.EMAIL_PROVIDER === 'resend') need(['RESEND_API_KEY'], 'required for EMAIL_PROVIDER=resend');
     if (e.NODE_ENV !== 'production') return;
     if (e.CORS_ORIGINS.some((o) => o.startsWith('http://'))) {
       ctx.addIssue({ code: 'custom', path: ['CORS_ORIGINS'], message: 'use https origins in production' });
@@ -81,6 +86,9 @@ const schema = z
     }
     if (e.OTP_TEST_PHONES.length) {
       ctx.addIssue({ code: 'custom', path: ['OTP_TEST_PHONES'], message: 'test numbers that skip SMS are not allowed in production' });
+    }
+    if (e.EMAIL_PROVIDER === 'console') {
+      ctx.addIssue({ code: 'custom', path: ['EMAIL_PROVIDER'], message: 'console email is not allowed in production' });
     }
     if (e.SMS_PROVIDER === 'console') {
       ctx.addIssue({ code: 'custom', path: ['SMS_PROVIDER'], message: 'console SMS is not allowed in production' });
