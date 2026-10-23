@@ -20,8 +20,8 @@ export function SignUp() {
   const onSubmit = handleSubmit(async (values) => {
     setError(undefined);
     try {
-      const r = await requestOtp(values.phone, 'sign-up');
-      router.push({ pathname: '/verify', params: { ...values, purpose: 'sign-up', devCode: r.devCode } });
+      const r = await requestOtp(values.phone, 'sign-up', values.email.trim());
+      router.push({ pathname: '/verify', params: { ...values, purpose: 'sign-up', devCode: r.devCode, sentTo: r.sentTo } });
     } catch (e) {
       setError(e instanceof AuthError ? e.message : 'We could not send the code. Try again.');
     }
@@ -91,12 +91,12 @@ export function SignUp() {
           name="email"
           render={({ field, fieldState }) => (
             <TextField
-              label="Email (optional)"
+              label="Email"
               keyboardType="email-address"
               autoCapitalize="none"
               autoComplete="email"
               textContentType="emailAddress"
-              hint="Receipts and invoices are sent here."
+              hint="Your sign-in code and receipts are sent here."
               value={field.value}
               onChangeText={field.onChange}
               onBlur={field.onBlur}

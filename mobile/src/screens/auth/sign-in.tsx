@@ -20,7 +20,7 @@ export function SignIn() {
     setError(undefined);
     try {
       const r = await requestOtp(phone, 'sign-in');
-      router.push({ pathname: '/verify', params: { phone, purpose: 'sign-in', devCode: r.devCode } });
+      router.push({ pathname: '/verify', params: { phone, purpose: 'sign-in', devCode: r.devCode, sentTo: r.sentTo } });
     } catch (e) {
       setError(e instanceof AuthError ? e.message : 'We could not send the code. Try again.');
     }

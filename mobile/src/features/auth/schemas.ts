@@ -9,7 +9,8 @@ export const phoneSchema = z.object({ phone });
 export const signUpSchema = z.object({
   name: z.string().trim().min(2, 'Enter your full name.'),
   phone,
-  email: z.union([z.literal(''), z.email('Enter a valid email address.')]),
+  // Required: sign-in codes are sent to this address.
+  email: z.email('Enter a valid email address. We send your code there.'),
 });
 
 export const staffSignInSchema = z.object({

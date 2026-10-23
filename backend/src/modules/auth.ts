@@ -5,6 +5,8 @@ import { me, requireAuth } from '@/middleware/auth';
 import { authLimiter } from '@/middleware/rate-limit';
 import { body } from '@/middleware/validate';
 import { AppError, notFound, unauthorized } from '@/lib/errors';
+import { env } from '@/config/env';
+import { kv } from '@/lib/kv';
 import { checkOtp, sendOtp } from '@/lib/otp';
 import { normalizePkMobile, pkMobile } from '@/lib/phone';
 import { consumeRefresh, issueRefresh, revokeRefresh, signAccess } from '@/lib/tokens';
@@ -29,17 +31,33 @@ export async function issueSession(user: UserDoc) {
 authRouter.post(
   '/otp/request',
   authLimiter,
-  body(z.object({ phone: pkMobile, purpose: z.enum(['sign-in', 'sign-up']) })),
+  body(z.object({ phone: pkMobile, purpose: z.enum(['sign-in', 'sign-up']), email: z.email().max(120).toLowerCase().optional() })),
   async (req, res) => {
-    const { phone, purpose } = req.body as { phone: string; purpose: 'sign-in' | 'sign-up' };
-    const existing = await UserModel.findOne({ phone }).select('role status').lean();
+    const { phone, purpose, email } = req.body as { phone: string; purpose: 'sign-in' | 'sign-up'; email?: string };
+    const existing = await UserModel.findOne({ phone }).select('role status email').lean();
     if (existing && existing.role !== 'customer') {
       throw new AppError(400, 'use_password', 'This number belongs to a staff account. Use staff sign in.');
     }
     if (purpose === 'sign-in' && !existing) throw new AppError(404, 'no_account', 'No account with this number. Create one first.');
     if (purpose === 'sign-up' && existing) throw new AppError(409, 'account_exists', 'An account with this number already exists. Sign in instead.');
     if (existing?.status === 'suspended') throw new AppError(403, 'suspended', 'This account is suspended. Contact support.');
-    res.json(await sendOtp(phone));
+
+    // Email codes: sign-up sends to the address entered (remembered for account creation);
+    // sign-in sends to the address on the account.
+    let to: string | undefined;
+    if (env.OTP_CHANNEL === 'email') {
+      if (purpose === 'sign-up') {
+        if (!email) throw new AppError(400, 'email_required', 'Enter your email address. We send your code there.');
+        if (await UserModel.exists({ email })) throw new AppError(409, 'email_taken', 'This email is already used by another account.');
+        to = email;
+      } else {
+        to = existing?.email;
+        if (!to) throw new AppError(400, 'no_email', 'This account has no email address. Contact support to sign in.');
+      }
+    }
+    const r = await sendOtp(phone, to);
+    if (purpose === 'sign-up' && email) await kv.set(`otp:email:${phone}`, email, 10 * 60);
+    res.json({ ...r, channel: env.OTP_CHANNEL, ...(to ? { sentTo: maskEmail(to) } : {}) });
   },
 );
 
@@ -66,7 +84,10 @@ authRouter.post(
     let user = await UserModel.findOne({ phone });
     if (!user) {
       if (!name) throw new AppError(400, 'name_required', 'Enter your name to create an account.');
-      user = await UserModel.create({ role: 'customer', name, phone, email });
+      // With email codes, the account gets the address the code was sent to (it is now verified).
+      const verified = (await kv.get(`otp:email:${phone}`)) ?? undefined;
+      user = await UserModel.create({ role: 'customer', name, phone, email: env.OTP_CHANNEL === 'email' ? verified : email });
+      await kv.del(`otp:email:${phone}`);
     }
     if (user.status !== 'active') throw new AppError(403, 'suspended', 'This account is suspended. Contact support.');
     user.lastLoginAt = new Date();
@@ -173,15 +194,17 @@ authRouter.post(
   async (req, res) => {
     const { identifier } = req.body as { identifier: string };
     const phone = normalizePkMobile(identifier);
-    const user = await UserModel.findOne(phone ? { phone } : { email: identifier.toLowerCase() }).select('role status phone').lean();
-    let sentTo: string | undefined;
-    if (user && user.role !== 'customer' && user.status === 'active') {
-      const r = await sendOtp(user.phone);
-      sentTo = user.phone;
+    const user = await UserModel.findOne(phone ? { phone } : { email: identifier.toLowerCase() }).select('role status phone email').lean();
+    const byEmail = env.OTP_CHANNEL === 'email';
+    // Accounts without an email cannot get an email code; answer exactly as for an unknown account.
+    if (user && user.role !== 'customer' && user.status === 'active' && (!byEmail || user.email)) {
+      const r = await sendOtp(user.phone, byEmail ? user.email : undefined);
+      const hint = byEmail ? maskEmail(user.email!) : maskPhone(user.phone);
       // Development convenience only (sendOtp never returns it in production).
-      if ('devCode' in r) return res.json({ sent: true, phoneHint: maskPhone(sentTo), devCode: r.devCode });
+      if ('devCode' in r) return res.json({ sent: true, phoneHint: hint, devCode: r.devCode });
+      return res.json({ sent: true, phoneHint: hint });
     }
-    res.json({ sent: true, ...(sentTo ? { phoneHint: maskPhone(sentTo) } : {}) });
+    res.json({ sent: true });
   },
 );
 
@@ -210,6 +233,7 @@ authRouter.post(
 );
 
 const maskPhone = (p: string) => `${p.slice(0, 5)}*****${p.slice(-2)}`;
+const maskEmail = (e: string) => e.replace(/^(.)(.*)(@.*)$/, (_, a: string, b: string, c: string) => `${a}${'*'.repeat(Math.min(b.length, 6))}${c}`);
 
 // Password change signs out every other session by bumping tokenVersion.
 authRouter.post(

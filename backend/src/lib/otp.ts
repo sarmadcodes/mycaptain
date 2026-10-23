@@ -4,6 +4,7 @@ import { env, isProd } from '@/config/env';
 
 import { AppError, tooMany } from './errors';
 import { kv } from './kv';
+import { sendEmail } from './email';
 import { sms } from './sms';
 
 const CODE_TTL = 5 * 60;
@@ -15,7 +16,8 @@ const digest = (phone: string, code: string) => createHmac('sha256', env.OTP_PEP
 
 const isTestPhone = (phone: string) => !isProd && env.OTP_TEST_PHONES.includes(phone);
 
-export async function sendOtp(phone: string) {
+// Codes are keyed by phone. With OTP_CHANNEL=email they are delivered to `email` instead of by SMS.
+export async function sendOtp(phone: string, email?: string) {
   // Test numbers: no SMS, no limits; the fixed test code is accepted.
   if (isTestPhone(phone)) return { resendIn: RESEND_COOLDOWN, expiresIn: CODE_TTL, devCode: env.OTP_TEST_CODE };
 
@@ -29,7 +31,18 @@ export async function sendOtp(phone: string) {
   await kv.del(`otp:att:${phone}`);
   await kv.set(`otp:cd:${phone}`, '1', RESEND_COOLDOWN);
   try {
-    await sms.send(phone, `${code} is your My Captain code. It expires in 5 minutes. Do not share it.`);
+    if (env.OTP_CHANNEL === 'email') {
+      if (!email) throw new AppError(400, 'email_required', 'Add an email address to receive your code.');
+      await sendEmail({
+        to: email,
+        subject: `${code} is your My Captain code`,
+        heading: 'Your sign-in code',
+        lines: [`Enter ${code} in the My Captain app. It expires in 5 minutes.`, 'If you did not ask for this code, you can ignore this email. Never share it with anyone.'],
+        throwOnError: true,
+      });
+    } else {
+      await sms.send(phone, `${code} is your My Captain code. It expires in 5 minutes. Do not share it.`);
+    }
   } catch (err) {
     // Nothing was delivered: let the person retry straight away.
     await Promise.all([kv.del(`otp:${phone}`), kv.del(`otp:cd:${phone}`)]);

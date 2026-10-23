@@ -20,5 +20,6 @@ else
 fi
 
 sleep 3
-curl -fsS http://127.0.0.1:4000/health >/dev/null && echo "API healthy"
-curl -fsS -o /dev/null http://127.0.0.1:3010/ && echo "Partner website healthy"
+API_PORT=$(grep -E "^PORT=" backend/.env | cut -d= -f2)
+curl -fsS "http://127.0.0.1:${API_PORT:-4710}/health" >/dev/null && echo "API healthy"
+curl -fsS -o /dev/null "http://127.0.0.1:${WEB_PORT:-3710}/" && echo "Website healthy"

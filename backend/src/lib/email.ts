@@ -1,11 +1,15 @@
 import { env, isProd, isTest } from '@/config/env';
 
+import { AppError } from './errors';
 import { logger } from './logger';
+
+// Messages "sent" during tests, for assertions.
+export const sent: { to: string; subject: string }[] = [];
 
 // Transactional email. EMAIL_PROVIDER=console logs messages (development); resend sends through Resend.
 // Sending never throws: a failed email must not fail the action that triggered it.
 
-type Email = { to: string; subject: string; heading: string; lines: string[]; cta?: { label: string; url: string } };
+type Email = { to: string; subject: string; heading: string; lines: string[]; cta?: { label: string; url: string }; throwOnError?: boolean };
 
 const escape = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
@@ -26,7 +30,8 @@ function html(e: Email) {
 const text = (e: Email) => [e.heading, '', ...e.lines, ...(e.cta ? ['', `${e.cta.label}: ${e.cta.url}`] : [])].join('\n');
 
 export async function sendEmail(e: Email) {
-  if (isTest || !e.to) return;
+  if (!e.to) return;
+  if (isTest) return void sent.push(e);
   try {
     if (env.EMAIL_PROVIDER === 'console') {
       if (isProd) throw new Error('Console email used in production');
@@ -39,9 +44,10 @@ export async function sendEmail(e: Email) {
       body: JSON.stringify({ from: env.EMAIL_FROM, to: [e.to], subject: e.subject, html: html(e), text: text(e) }),
       signal: AbortSignal.timeout(10_000),
     });
-    if (!res.ok) logger.error({ status: res.status, body: (await res.text()).slice(0, 300) }, 'email send failed');
+    if (!res.ok) throw new Error(`resend ${res.status}: ${(await res.text()).slice(0, 300)}`);
   } catch (err) {
     logger.error({ err }, 'email send failed');
+    if (e.throwOnError) throw new AppError(502, 'email_failed', 'We could not send the email. Check the address and try again.');
   }
 }
 

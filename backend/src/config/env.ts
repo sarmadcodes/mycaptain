@@ -33,6 +33,8 @@ const schema = z
     CLOUDINARY_API_KEY: z.string().optional(),
     CLOUDINARY_API_SECRET: z.string().optional(),
 
+    // Where one-time codes go. email: sent to the account's email address (phone is still collected).
+    OTP_CHANNEL: z.enum(['sms', 'email']).default('sms'),
     SMS_PROVIDER: z.enum(['console', 'twilio', 'http']).default('console'),
     // Test numbers that skip SMS and accept OTP_TEST_CODE (development and testing only).
     OTP_TEST_PHONES: z
@@ -92,7 +94,8 @@ const schema = z
     if (e.EMAIL_PROVIDER === 'console') {
       ctx.addIssue({ code: 'custom', path: ['EMAIL_PROVIDER'], message: 'console email is not allowed in production' });
     }
-    if (e.SMS_PROVIDER === 'console') {
+    // Console SMS is only a problem when codes actually go by SMS.
+    if (e.SMS_PROVIDER === 'console' && e.OTP_CHANNEL === 'sms') {
       ctx.addIssue({ code: 'custom', path: ['SMS_PROVIDER'], message: 'console SMS is not allowed in production' });
     }
   });

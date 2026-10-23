@@ -18,7 +18,8 @@ module.exports = {
       name: 'mycaptain-partners',
       cwd: './partners',
       script: 'node_modules/next/dist/bin/next',
-      args: 'start -p 3010 -H 127.0.0.1',
+      // Port must match the Nginx site (deploy/nginx/mycaptain.conf). The API port is PORT in backend/.env.
+      args: `start -p ${process.env.WEB_PORT || 3710} -H 127.0.0.1`,
       env: { NODE_ENV: 'production' },
       max_memory_restart: '500M',
       time: true,

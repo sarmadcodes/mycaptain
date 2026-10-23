@@ -10,9 +10,14 @@ export type OtpPurpose = 'sign-in' | 'sign-up';
 
 export { ApiError as AuthError };
 
-export async function requestOtp(phone: string, purpose: OtpPurpose) {
+// The code goes by email or SMS, whichever the server is set to; `sentTo` says where.
+export async function requestOtp(phone: string, purpose: OtpPurpose, email?: string) {
   try {
-    const { data } = await api.post<{ resendIn: number; devCode?: string }>('/auth/otp/request', { phone: toE164(phone), purpose });
+    const { data } = await api.post<{ resendIn: number; devCode?: string; channel: 'sms' | 'email'; sentTo?: string }>('/auth/otp/request', {
+      phone: toE164(phone),
+      purpose,
+      ...(email ? { email } : {}),
+    });
     return data;
   } catch (e) {
     throw toApiError(e);
