@@ -80,6 +80,46 @@ export function usePay() {
   });
 }
 
+// ---------- Partner payouts (admin) ----------
+
+export type PayoutApi = {
+  id: string;
+  company: { id: string; legalName: string; tradingName?: string; ref: string };
+  periodStart: string;
+  periodEnd: string;
+  count: number;
+  amount: number;
+  fees: number;
+  status: 'scheduled' | 'paid';
+  reference?: string;
+  paidAt?: string;
+};
+
+export const usePayouts = () => useQuery({ queryKey: ['payouts'], queryFn: () => call(api.get<{ items: PayoutApi[] }>('/admin/payouts')) });
+
+export const usePayoutPreview = (from: string, to: string) =>
+  useQuery({
+    queryKey: ['payouts', 'preview', from, to],
+    queryFn: () =>
+      call(api.get<{ items: { company: { id: string; name?: string }; count: number; amount: number }[] }>('/admin/payouts/preview', { params: { from, to } })),
+  });
+
+export function useGeneratePayouts() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { from: string; to: string }) => call(api.post<{ created: number }>('/admin/payouts/generate', v)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['payouts'] }),
+  });
+}
+
+export function useMarkPayoutPaid() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reference }: { id: string; reference: string }) => call(api.post(`/admin/payouts/${id}/paid`, { reference })),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['payouts'] }),
+  });
+}
+
 // ---------- Ratings ----------
 
 export function useRate(bookingId: string) {

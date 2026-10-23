@@ -7,10 +7,12 @@ import {
   FilesIcon,
   HouseIcon,
   SignOutIcon,
+  SirenIcon,
   UsersThreeIcon,
+  WalletIcon,
   WarningCircleIcon,
 } from '@phosphor-icons/react';
-import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -26,6 +28,7 @@ const NAV = [
   { href: '/dashboard/bookings', label: 'Bookings', icon: CalendarCheckIcon },
   { href: '/dashboard/staff', label: 'Staff', icon: UsersThreeIcon },
   { href: '/dashboard/fleet', label: 'Fleet', icon: CarIcon, rentalsOnly: true },
+  { href: '/dashboard/payouts', label: 'Payouts', icon: WalletIcon },
   { href: '/dashboard/documents', label: 'Documents', icon: FilesIcon },
   { href: '/dashboard/company', label: 'Company', icon: BuildingsIcon },
 ];
@@ -127,6 +130,7 @@ function Frame({ children }: { children: ReactNode }) {
 
         <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
           {company && company.status !== 'approved' ? <StatusBanner status={company.status} note={company.reviewNote} /> : null}
+          <SosBanner />
           {children}
         </main>
       </div>
@@ -155,6 +159,46 @@ function StatusBanner({ status, note }: { status: string; note?: string }) {
           </Link>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+type Sos = {
+  id: string;
+  status: 'open' | 'acknowledged' | 'resolved';
+  note?: string;
+  createdAt: string;
+  raisedBy?: { name: string; phone: string; role: string };
+  booking?: { id: string; code: string; location: { address: string } };
+};
+
+// Emergency alerts on this company's bookings. Operations responds; the company should call its staff.
+function SosBanner() {
+  const { data } = useQuery({ queryKey: ['sos'], queryFn: () => api<{ items: Sos[] }>('/sos'), refetchInterval: 60_000 });
+  const active = (data?.items ?? []).filter((s) => s.status !== 'resolved');
+  if (!active.length) return null;
+  return (
+    <div className="mb-8 space-y-3">
+      {active.map((s) => (
+        <div key={s.id} role="alert" className="flex flex-col gap-2 rounded-2xl border border-danger bg-danger/10 p-4 sm:flex-row sm:items-center">
+          <SirenIcon size={24} weight="fill" className="shrink-0 text-danger" />
+          <div className="flex-1">
+            <p className="font-semibold">
+              SOS from {s.raisedBy?.name ?? 'a user'}
+              {s.booking ? ` on ${s.booking.code}` : ''}
+            </p>
+            <p className="text-sm text-muted">
+              {s.booking?.location.address}
+              {s.note ? `. ${s.note}` : ''}. {s.status === 'open' ? 'Operations has been alerted.' : 'Operations is responding.'}
+            </p>
+          </div>
+          {s.booking ? (
+            <Link href={`/dashboard/bookings/${s.booking.id}`} className="text-sm font-semibold text-blue hover:underline">
+              Open booking
+            </Link>
+          ) : null}
+        </div>
+      ))}
     </div>
   );
 }

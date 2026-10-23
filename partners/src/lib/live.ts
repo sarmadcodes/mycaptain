@@ -33,5 +33,8 @@ export async function connectLive(qc: QueryClient): Promise<Socket | null> {
   socket.on('booking:updated', bookings);
   socket.on('booking:removed', bookings);
   socket.on('company:updated', () => qc.invalidateQueries({ queryKey: ['company'] }));
+  socket.on('sos:new', () => qc.invalidateQueries({ queryKey: ['sos'] }));
+  socket.on('sos:updated', () => qc.invalidateQueries({ queryKey: ['sos'] }));
+  socket.on('payouts:updated', () => qc.invalidateQueries({ queryKey: ['payouts'] }));
   return socket;
 }

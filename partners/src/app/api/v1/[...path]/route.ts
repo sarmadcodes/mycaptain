@@ -4,7 +4,7 @@ import { forbidden, sameOrigin, unavailable } from '@/lib/server/guard';
 import { accessToken, API_URL, refreshSession, saveSession } from '@/lib/server/session';
 
 // Only the endpoints a partner needs are reachable through this site.
-const ALLOWED = [/^companies\/me(\/.*)?$/, /^bookings(\/[a-f\d]{24}(\/(assign-staff))?)?$/i, /^rates$/, /^auth\/(me|password)$/];
+const ALLOWED = [/^companies\/me(\/.*)?$/, /^bookings(\/[a-f\d]{24}(\/(assign-staff))?)?$/i, /^rates$/, /^auth\/(me|password)$/, /^sos$/];
 
 async function forward(req: Request, ctx: { params: Promise<{ path: string[] }> }) {
   if (!sameOrigin(req)) return forbidden();

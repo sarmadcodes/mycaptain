@@ -13,6 +13,7 @@ import { authRouter } from '@/modules/auth';
 import { bookingsRouter } from '@/modules/bookings';
 import { opsRouter } from './modules/ops';
 import { paymentsRouter } from './modules/payments';
+import { payoutsRouter } from './modules/payouts';
 import { catalogRouter } from '@/modules/catalog';
 import { companiesRouter } from '@/modules/companies';
 
@@ -48,6 +49,7 @@ export function createApp() {
   api.use('/', catalogRouter);
   api.use('/', opsRouter);
   api.use('/', paymentsRouter);
+  api.use('/', payoutsRouter);
   app.use('/api/v1', api);
 
   app.use(notFoundHandler);

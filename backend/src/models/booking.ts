@@ -60,6 +60,8 @@ export type Booking = {
   events: DutyEvent[];
   locations: StaffLocation[];
   rating?: { stars: number; comment?: string; at: Date };
+  // Partner payout statement that covers this booking.
+  payout?: Types.ObjectId;
 };
 
 export const DUTY_EVENTS = ['check_in', 'break_start', 'break_end', 'sos'] as const;
@@ -146,6 +148,7 @@ const schema = new Schema<Booking>(
       },
     ],
     rating: { stars: { type: Number, min: 1, max: 5 }, comment: { type: String, maxlength: 500 }, at: Date },
+    payout: { type: Schema.Types.ObjectId, ref: 'Payout', index: true },
   },
   { timestamps: true, toJSON },
 );

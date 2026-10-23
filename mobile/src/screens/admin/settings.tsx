@@ -7,7 +7,7 @@ import { errorMessage } from '@/services/api/client';
 import type { Rates } from '@/types/api';
 import { SwitchRow } from '@/components/ui/switch-row';
 import { formatPKR } from '@/features/booking/pricing';
-import { payouts } from '@/lib/admin-data';
+import { useGeneratePayouts, useMarkPayoutPaid, usePayoutPreview, usePayouts } from '@/features/ops';
 import { space } from '@/theme';
 
 const FIELDS = [
@@ -89,22 +89,93 @@ function RateForm({ rates }: { rates: Rates }) {
   );
 }
 
+const dayStart = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const range = (from: string, to: string) =>
+  `${new Date(from).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} to ${new Date(to).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`;
+
+// Statements for partner companies: work done in a period, then marked paid with the bank reference.
 export function Payouts() {
+  const list = usePayouts();
+  const generate = useGeneratePayouts();
+  const markPaid = useMarkPayoutPaid();
+  const [refs, setRefs] = useState<Record<string, string>>({});
+
+  // Default period: the last 7 full days.
+  const to = dayStart(new Date());
+  const from = new Date(to.getTime() - 7 * 86_400_000);
+  const preview = usePayoutPreview(from.toISOString(), to.toISOString());
+  const due = preview.data?.items ?? [];
+
   return (
     <Screen header={<Header title="Payouts" />}>
-      <View style={{ gap: space.md }}>
-        <Text tone="muted">Weekly transfers to partner companies for completed duties.</Text>
-        {payouts.map((p) => (
-          <Card key={p.company + p.period} style={{ gap: 4 }}>
-            <View style={styles.between}>
-              <Text variant="heading" style={{ flex: 1 }}>
-                {p.company}
-              </Text>
-              <Badge label={p.status} tone={p.status === 'Paid' ? 'green' : 'blue'} />
-            </View>
-            <DetailRow label={p.period} value={formatPKR(p.amount)} />
-          </Card>
-        ))}
+      <View style={{ gap: space.lg }}>
+        <Text tone="muted">Partners are owed the booking price less the platform fee for every completed duty.</Text>
+
+        <Card style={{ gap: space.md }}>
+          <Text variant="heading">Ready to bill, {range(from.toISOString(), to.toISOString())}</Text>
+          {preview.isLoading ? (
+            <LoadingView />
+          ) : due.length ? (
+            due.map((d) => <DetailRow key={d.company.id} label={`${d.company.name ?? 'Company'}, ${d.count} duties`} value={formatPKR(d.amount)} />)
+          ) : (
+            <Text tone="muted">No unbilled completed duties in this period.</Text>
+          )}
+          <Button
+            label="Create statements"
+            disabled={!due.length}
+            loading={generate.isPending}
+            onPress={() => generate.mutate({ from: from.toISOString(), to: to.toISOString() })}
+          />
+          {generate.error ? (
+            <Text variant="caption" tone="danger">
+              {errorMessage(generate.error)}
+            </Text>
+          ) : null}
+        </Card>
+
+        {list.isLoading ? (
+          <LoadingView />
+        ) : list.error ? (
+          <ErrorView error={list.error} onRetry={list.refetch} />
+        ) : (
+          (list.data?.items ?? []).map((p) => (
+            <Card key={p.id} style={{ gap: space.sm }}>
+              <View style={styles.between}>
+                <Text variant="heading" style={{ flex: 1 }}>
+                  {p.company.tradingName || p.company.legalName}
+                </Text>
+                <Badge label={p.status === 'paid' ? 'Paid' : 'Scheduled'} tone={p.status === 'paid' ? 'green' : 'blue'} />
+              </View>
+              <DetailRow label={`${range(p.periodStart, p.periodEnd)}, ${p.count} duties`} value={formatPKR(p.amount)} strong />
+              {p.status === 'paid' ? (
+                <Text variant="caption" tone="muted">
+                  Sent {new Date(p.paidAt!).toLocaleDateString('en-GB')}, reference {p.reference}
+                </Text>
+              ) : (
+                <View style={{ gap: space.sm }}>
+                  <TextField
+                    label="Bank transfer reference"
+                    value={refs[p.id] ?? ''}
+                    onChangeText={(t) => setRefs((r) => ({ ...r, [p.id]: t }))}
+                    placeholder="e.g. IBFT-778812"
+                  />
+                  <Button
+                    label="Mark paid"
+                    variant="secondary"
+                    disabled={(refs[p.id] ?? '').trim().length < 3}
+                    loading={markPaid.isPending && markPaid.variables?.id === p.id}
+                    onPress={() => markPaid.mutate({ id: p.id, reference: refs[p.id]!.trim() })}
+                  />
+                </View>
+              )}
+            </Card>
+          ))
+        )}
+        {markPaid.error ? (
+          <Text variant="caption" tone="danger">
+            {errorMessage(markPaid.error)}
+          </Text>
+        ) : null}
       </View>
     </Screen>
   );
