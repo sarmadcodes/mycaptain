@@ -5,6 +5,7 @@ import { MulterError } from 'multer';
 import { isProd } from '@/config/env';
 import { AppError } from '@/lib/errors';
 import { logger } from '@/lib/logger';
+import { captureError } from '@/lib/monitoring';
 
 export function notFoundHandler(_req: Request, res: Response) {
   res.status(404).json({ error: { code: 'not_found', message: 'Route not found.' } });
@@ -40,6 +41,7 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
   }
 
   logger.error({ err, path: req.path, method: req.method }, 'unhandled error');
+  captureError(err, { path: req.path, method: req.method });
   res.status(500).json({
     error: { code: 'internal', message: 'Something went wrong. Please try again.', ...(isProd ? {} : { details: String(err) }) },
   });

@@ -9,6 +9,7 @@ import { generatePayouts } from '@/modules/payouts';
 
 import { kv } from './kv';
 import { logger } from './logger';
+import { captureError } from './monitoring';
 import { notify } from './notify';
 
 // Background jobs. Each run takes a short lock so only one server instance does the work.
@@ -23,6 +24,7 @@ async function once(name: string, ttlSec: number, fn: () => Promise<unknown>) {
     await fn();
   } catch (err) {
     logger.error({ err, job: name }, 'job failed');
+    captureError(err, { job: name });
   }
 }
 

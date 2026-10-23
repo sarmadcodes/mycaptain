@@ -1,5 +1,8 @@
 import { createServer } from 'node:http';
 
+// First, so errors anywhere during start-up are reported.
+import { captureError, flushMonitoring } from './lib/monitoring';
+
 import { createApp } from './app';
 import { env } from './config/env';
 import { connectDb, disconnectDb } from './lib/db';
@@ -34,10 +37,14 @@ async function main() {
   };
   process.on('SIGTERM', () => void shutdown('SIGTERM'));
   process.on('SIGINT', () => void shutdown('SIGINT'));
-  process.on('unhandledRejection', (err) => logger.error({ err }, 'unhandled rejection'));
+  process.on('unhandledRejection', (err) => {
+    logger.error({ err }, 'unhandled rejection');
+    captureError(err);
+  });
 }
 
 main().catch((err) => {
   logger.fatal({ err }, 'failed to start');
-  process.exit(1);
+  captureError(err);
+  flushMonitoring().finally(() => process.exit(1));
 });

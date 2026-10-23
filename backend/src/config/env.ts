@@ -42,6 +42,8 @@ const schema = z
     OTP_TEST_CODE: z.string().regex(/^\d{6}$/, 'must be 6 digits').default('123456'),
     // demo: checkout succeeds instantly without moving money. Real providers come later.
     // Background jobs (auto-cancel, reminders, expiry warnings, weekly payouts).
+    // Error monitoring (optional). From sentry.io: Project settings, Client keys.
+    SENTRY_DSN: z.url().optional(),
     EMAIL_PROVIDER: z.enum(['console', 'resend']).default('console'),
     RESEND_API_KEY: z.string().optional(),
     EMAIL_FROM: z.string().default('My Captain <no-reply@mycaptain.pk>'),

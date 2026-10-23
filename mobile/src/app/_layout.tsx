@@ -6,6 +6,7 @@ import {
   useFonts,
 } from '@expo-google-fonts/manrope';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import * as Sentry from '@sentry/react-native';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -24,7 +25,11 @@ import { colors } from '@/theme';
 
 SplashScreen.preventAutoHideAsync();
 
-export default function RootLayout() {
+// Crash and error reporting. Off unless EXPO_PUBLIC_SENTRY_DSN is set for the build.
+const SENTRY_DSN = process.env.EXPO_PUBLIC_SENTRY_DSN;
+if (SENTRY_DSN) Sentry.init({ dsn: SENTRY_DSN, tracesSampleRate: 0, sendDefaultPii: false });
+
+function RootLayout() {
   const [fontsLoaded] = useFonts({
     Manrope_400Regular,
     Manrope_500Medium,
@@ -81,3 +86,5 @@ function SessionSync() {
   }, [signedIn, setUser]);
   return null;
 }
+
+export default SENTRY_DSN ? Sentry.wrap(RootLayout) : RootLayout;

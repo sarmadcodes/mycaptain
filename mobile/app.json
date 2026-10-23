@@ -58,7 +58,8 @@
           "photosPermission": "Attach photos and videos as evidence for incident reports."
         }
       ],
-      "expo-notifications"
+      "expo-notifications",
+      "@sentry/react-native"
     ],
     "experiments": {
       "typedRoutes": true,
