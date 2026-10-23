@@ -11,11 +11,16 @@ import { errorHandler, notFoundHandler } from '@/middleware/error';
 import { apiLimiter } from '@/middleware/rate-limit';
 import { authRouter } from '@/modules/auth';
 import { bookingsRouter } from '@/modules/bookings';
+import { addSender } from './lib/notify';
+import { sendPush } from './lib/push';
 import { opsRouter } from './modules/ops';
 import { paymentsRouter } from './modules/payments';
 import { payoutsRouter } from './modules/payouts';
 import { catalogRouter } from '@/modules/catalog';
 import { companiesRouter } from '@/modules/companies';
+
+// Every in-app notification is also sent as a push notification.
+addSender(sendPush);
 
 export function createApp() {
   const app = express();

@@ -123,6 +123,7 @@ authRouter.patch(
     z.object({
       name: z.string().trim().min(2).max(80).optional(),
       email: z.email().max(120).optional(),
+      pushEnabled: z.boolean().optional(),
       // Staff only.
       available: z.boolean().optional(),
       availability: z

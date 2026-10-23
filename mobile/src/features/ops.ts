@@ -193,7 +193,7 @@ export const useMe = () => useQuery({ queryKey: ['me'], queryFn: () => call(api.
 export function useUpdateMe() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (v: { name?: string; email?: string; available?: boolean; availability?: ApiUser['availability'] }) =>
+    mutationFn: (v: { name?: string; email?: string; pushEnabled?: boolean; available?: boolean; availability?: ApiUser['availability'] }) =>
       call(api.patch<{ user: ApiUser }>('/auth/me', v)),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['me'] }),
   });

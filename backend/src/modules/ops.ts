@@ -365,6 +365,22 @@ opsRouter.get('/me/company', requireAuth, requireRole('driver', 'guard'), async 
   });
 });
 
+// Devices register their Expo push token after sign-in; sign-out removes it.
+const pushToken = z.object({ token: z.string().regex(/^Expo(nent)?PushToken\[.+\]$/, 'Invalid push token.').max(200), platform: z.enum(['ios', 'android', 'web']) });
+
+opsRouter.post('/me/push-token', requireAuth, body(pushToken), async (req, res) => {
+  const v = req.body as z.infer<typeof pushToken>;
+  // A device belongs to one account at a time.
+  await UserModel.updateMany({ 'pushTokens.token': v.token }, { $pull: { pushTokens: { token: v.token } } });
+  await UserModel.updateOne({ _id: me(req).id }, { $push: { pushTokens: { $each: [{ ...v, at: new Date() }], $slice: -5 } } });
+  res.status(204).end();
+});
+
+opsRouter.delete('/me/push-token', requireAuth, body(pushToken.pick({ token: true })), async (req, res) => {
+  await UserModel.updateOne({ _id: me(req).id }, { $pull: { pushTokens: { token: (req.body as { token: string }).token } } });
+  res.status(204).end();
+});
+
 opsRouter.get('/me/notifications', requireAuth, async (req, res) => {
   const items = await NotificationModel.find({ user: me(req).id }).sort({ createdAt: -1 }).limit(50);
   const unread = await NotificationModel.countDocuments({ user: me(req).id, readAt: { $exists: false } });

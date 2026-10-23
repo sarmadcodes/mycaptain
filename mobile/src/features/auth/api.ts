@@ -1,4 +1,5 @@
 import { api, ApiError, toApiError } from '@/services/api/client';
+import { unregisterPush } from '@/lib/push';
 import { disconnectSocket } from '@/services/socket';
 import { queryClient } from '@/lib/query-client';
 import { useAuth } from '@/stores/auth';
@@ -45,6 +46,7 @@ export async function staffSignIn(params: { phone: string; password: string }) {
 
 export async function signOut() {
   const { refreshToken, clear } = useAuth.getState();
+  await unregisterPush();
   if (refreshToken) await api.post('/auth/logout', { refreshToken }).catch(() => {});
   disconnectSocket();
   queryClient.clear();

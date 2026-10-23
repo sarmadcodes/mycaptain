@@ -42,6 +42,8 @@ const schema = z
     OTP_TEST_CODE: z.string().regex(/^\d{6}$/, 'must be 6 digits').default('123456'),
     // demo: checkout succeeds instantly without moving money. Real providers come later.
     // Background jobs (auto-cancel, reminders, expiry warnings, weekly payouts).
+    PUSH_ENABLED: z.stringbool().default(true),
+    EXPO_ACCESS_TOKEN: z.string().optional(),
     JOBS_ENABLED: z.stringbool().default(true),
     UNPAID_CANCEL_MINUTES: z.coerce.number().int().min(5).max(24 * 60).default(30),
     PAYMENT_PROVIDER: z.enum(['demo']).default('demo'),

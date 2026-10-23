@@ -12,6 +12,7 @@ export type ApiUser = {
   company?: string | { id: string; legalName: string; tradingName?: string; status: string; ref: string };
   avatarUrl?: string;
   status: 'active' | 'suspended';
+  pushEnabled?: boolean;
   available?: boolean;
   availability?: { days: string[]; shift: 'day' | 'night' | 'any' };
   documents?: { id: string; kind: string; status: 'pending' | 'verified' | 'rejected'; uploadedAt: string }[];

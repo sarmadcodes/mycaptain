@@ -5,6 +5,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { Badge, Button, Card, DetailRow, EmptyView, ErrorView, Header, ListRow, LoadingView, Screen, Section, Text, TextField } from '@/components/ui';
 import { useBookings } from '@/features/api';
+import { useMe, useUpdateMe } from '@/features/ops';
 import { bookingTitle, isLive, statusInfo } from '@/features/booking/labels';
 import { SwitchRow } from '@/components/ui/switch-row';
 import { formatPKR } from '@/features/booking/pricing';
@@ -206,20 +207,25 @@ export function Contracts() {
 }
 
 export function NotificationSettings() {
-  const [prefs, setPrefs] = useState({ duty: true, arrival: true, payments: true, offers: false, sms: true });
-  const toggle = (k: keyof typeof prefs) => (v: boolean) => setPrefs((p) => ({ ...p, [k]: v }));
+  const me = useMe();
+  const update = useUpdateMe();
+  const enabled = me.data?.user.pushEnabled ?? true;
   return (
     <Screen header={<Header title="Notifications" />}>
-      <SwitchRow title="Duty updates" subtitle="Check-ins, breaks and duty end" value={prefs.duty} onChange={toggle('duty')} />
       <SwitchRow
-        title="Arrival alerts"
-        subtitle="When your captain is close"
-        value={prefs.arrival}
-        onChange={toggle('arrival')}
+        title="Push notifications"
+        subtitle="Staff assigned, on the way, duty started and finished, messages, refunds and case updates"
+        value={enabled}
+        onChange={(v) => update.mutate({ pushEnabled: v })}
       />
-      <SwitchRow title="Payments and invoices" value={prefs.payments} onChange={toggle('payments')} />
-      <SwitchRow title="SMS for urgent cases" value={prefs.sms} onChange={toggle('sms')} />
-      <SwitchRow title="Offers and news" value={prefs.offers} onChange={toggle('offers')} />
+      <Text variant="caption" tone="muted" style={{ marginTop: space.md }}>
+        Emergency and safety alerts are always shown in the app. You can also turn notifications off in your phone settings.
+      </Text>
+      {update.error ? (
+        <Text variant="caption" tone="danger">
+          {errorMessage(update.error)}
+        </Text>
+      ) : null}
     </Screen>
   );
 }

@@ -147,3 +147,17 @@ describe('notifications', () => {
     expect(after.body.unread).toBe(0);
   });
 });
+
+describe('push tokens', () => {
+  it('registers a device, moves it between accounts, and rejects junk', async () => {
+    const a = await customer('First');
+    const b = await customer('Second');
+    const token = 'ExponentPushToken[abc123]';
+    await api().post(`${v1}/me/push-token`).set(auth(a.token)).send({ token, platform: 'android' }).expect(204);
+    await api().post(`${v1}/me/push-token`).set(auth(b.token)).send({ token, platform: 'android' }).expect(204);
+    const { UserModel } = await import('@/models/user');
+    expect((await UserModel.findById(a.user.id).lean())?.pushTokens).toHaveLength(0);
+    expect((await UserModel.findById(b.user.id).lean())?.pushTokens).toHaveLength(1);
+    await api().post(`${v1}/me/push-token`).set(auth(a.token)).send({ token: 'not-a-token', platform: 'android' }).expect(400);
+  });
+});

@@ -14,6 +14,7 @@ import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 
+import { usePushNotifications } from '@/lib/push';
 import { queryClient } from '@/lib/query-client';
 import { api } from '@/services/api/client';
 import { useLiveConnection } from '@/services/socket';
@@ -68,6 +69,7 @@ export default function RootLayout() {
 // Keeps the live connection on the current session and refreshes the stored profile once per launch.
 function SessionSync() {
   useLiveConnection();
+  usePushNotifications();
   const signedIn = useAuth((s) => !!s.refreshToken);
   const setUser = useAuth((s) => s.setUser);
   useEffect(() => {
