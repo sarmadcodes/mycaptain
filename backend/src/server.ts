@@ -12,7 +12,15 @@ import { startJobs, stopJobs } from './lib/jobs';
 import { attachRealtime, closeRealtime } from './lib/realtime';
 
 async function main() {
-  if (redis) await redis.connect();
+  // Other modules (e.g. the rate limiter) may already have started the connection; just wait for it.
+  const r = redis;
+  if (r?.status === 'wait') await r.connect();
+  else if (r && r.status !== 'ready') {
+    await new Promise<void>((ok, fail) => {
+      r.once('ready', ok);
+      r.once('end', () => fail(new Error('Redis connection closed')));
+    });
+  }
   await connectDb();
 
   const server = createServer(createApp());
