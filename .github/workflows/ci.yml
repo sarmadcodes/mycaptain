@@ -45,6 +45,8 @@ jobs:
           cache: npm
           cache-dependency-path: partners/package-lock.json
       - run: npm ci
+      # Route and page types are generated, not committed.
+      - run: npx next typegen
       - run: npx tsc --noEmit
       - run: npm run lint
       - run: npm test
