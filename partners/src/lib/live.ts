@@ -28,11 +28,13 @@ export async function connectLive(qc: QueryClient): Promise<Socket | null> {
     }
   });
 
-  const bookings = () => qc.invalidateQueries({ queryKey: ['bookings'] });
+  const bookings = () => Promise.all([qc.invalidateQueries({ queryKey: ['bookings'] }), qc.invalidateQueries({ queryKey: ['admin'] })]);
   socket.on('booking:created', bookings);
   socket.on('booking:updated', bookings);
   socket.on('booking:removed', bookings);
-  socket.on('company:updated', () => qc.invalidateQueries({ queryKey: ['company'] }));
+  socket.on('company:updated', () => Promise.all([qc.invalidateQueries({ queryKey: ['company'] }), qc.invalidateQueries({ queryKey: ['admin'] })]));
+  socket.on('company:new', () => qc.invalidateQueries({ queryKey: ['admin'] }));
+  socket.on('case:new', () => qc.invalidateQueries({ queryKey: ['cases'] }));
   socket.on('sos:new', () => qc.invalidateQueries({ queryKey: ['sos'] }));
   socket.on('sos:updated', () => qc.invalidateQueries({ queryKey: ['sos'] }));
   socket.on('payouts:updated', () => qc.invalidateQueries({ queryKey: ['payouts'] }));

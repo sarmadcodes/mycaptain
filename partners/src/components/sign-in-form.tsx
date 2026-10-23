@@ -27,9 +27,10 @@ export function SignInForm() {
         setError(undefined);
         setLoading(true);
         try {
-          await api("/api/auth/login", { method: "POST", json: { identifier, password } });
+          const { user } = await api<{ user: { role: string } }>("/api/auth/login", { method: "POST", json: { identifier, password } });
+          const area = user.role === "admin" ? "/admin" : "/dashboard";
           const next = params.get("next");
-          router.replace(next?.startsWith("/dashboard") ? next : "/dashboard");
+          router.replace(next?.startsWith(area) ? next : area);
           router.refresh();
         } catch (err) {
           setError(messageOf(err));

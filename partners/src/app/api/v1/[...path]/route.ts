@@ -1,15 +1,28 @@
 import { NextResponse } from 'next/server';
 
 import { forbidden, sameOrigin, unavailable } from '@/lib/server/guard';
-import { accessToken, API_URL, refreshSession, saveSession } from '@/lib/server/session';
+import { accessToken, API_URL, readSession, refreshSession, saveSession } from '@/lib/server/session';
 
-// Only the endpoints a partner needs are reachable through this site.
-const ALLOWED = [/^companies\/me(\/.*)?$/, /^bookings(\/[a-f\d]{24}(\/(assign-staff))?)?$/i, /^rates$/, /^auth\/(me|password)$/, /^sos$/];
+// Only the endpoints each role needs are reachable through this site. The API still checks every call.
+const ALLOWED: Record<string, RegExp[]> = {
+  partner: [/^companies\/me(\/.*)?$/, /^bookings(\/[a-f\d]{24}(\/(assign-staff))?)?$/i, /^rates$/, /^auth\/(me|password)$/, /^sos$/],
+  admin: [
+    /^admin\/(overview|payouts(\/preview|\/generate|\/[a-f\d]{24}\/paid)?)$/i,
+    /^companies(\/[a-f\d]{24}(\/review)?)?$/i,
+    /^bookings(\/[a-f\d]{24}(\/(assign-company|assign-staff|status|messages|payments))?)?$/i,
+    /^cases(\/[a-f\d]{24})?$/i,
+    /^sos(\/[a-f\d]{24}\/status)?$/i,
+    /^rates$/,
+    /^auth\/(me|password)$/,
+    /^me\/notifications(\/read)?$/,
+  ],
+};
 
 async function forward(req: Request, ctx: { params: Promise<{ path: string[] }> }) {
   if (!sameOrigin(req)) return forbidden();
   const path = (await ctx.params).path.join('/');
-  if (!ALLOWED.some((r) => r.test(path))) {
+  const { role } = await readSession();
+  if (!(ALLOWED[role ?? 'partner'] ?? []).some((r) => r.test(path))) {
     return NextResponse.json({ error: { code: 'not_found', message: 'Not found.' } }, { status: 404 });
   }
 

@@ -74,5 +74,6 @@ export type Booking = {
   status: BookingStatus;
   staff: { id: string; name: string; staffKind?: string }[];
   customer?: { id: string; name: string } | string;
+  company?: { id: string; legalName: string; tradingName?: string; ref?: string } | string;
   history: { status: BookingStatus; at: string; note?: string }[];
 };

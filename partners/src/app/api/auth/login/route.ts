@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { forbidden, sameOrigin, unavailable } from '@/lib/server/guard';
-import { API_URL, saveSession, type Session } from '@/lib/server/session';
+import { API_URL, isSiteRole, saveSession, type Session } from '@/lib/server/session';
 
 export async function POST(req: Request) {
   if (!sameOrigin(req)) return forbidden();
@@ -17,8 +17,8 @@ export async function POST(req: Request) {
   if (!res.ok) return NextResponse.json(data, { status: res.status });
 
   const s = data as Session;
-  if (s.user.role !== 'partner') {
-    // Revoke the session we just received; this site is for partner companies only.
+  if (!isSiteRole(s.user.role)) {
+    // Revoke the session we just received; this site is for partner companies and operations only.
     await fetch(`${API_URL}/auth/logout`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },

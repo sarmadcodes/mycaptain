@@ -30,7 +30,7 @@ export async function api<T>(path: string, init: RequestInit & { json?: unknown 
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const e = data?.error ?? {};
-    if (res.status === 401 && typeof window !== 'undefined' && window.location.pathname.startsWith('/dashboard')) {
+    if (res.status === 401 && typeof window !== 'undefined' && (window.location.pathname.startsWith('/dashboard') || window.location.pathname.startsWith('/admin'))) {
       window.location.href = '/sign-in';
     }
     throw new ApiError(e.message ?? 'Something went wrong. Please try again.', e.code ?? 'unknown', res.status, e.details?.fields);
