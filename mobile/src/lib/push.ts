@@ -1,14 +1,14 @@
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
-import { router, type Href } from 'expo-router';
+import { router } from 'expo-router';
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
 
+import { notificationTarget as target } from '@/features/notification-target';
 import { queryClient } from '@/lib/query-client';
 import { api } from '@/services/api/client';
 import { useAuth } from '@/stores/auth';
-import type { Role } from '@/types/api';
 
 // Push notifications via Expo. The backend sends one for every in-app notification.
 // Needs a development or store build (Expo Go on Android cannot receive pushes).
@@ -49,19 +49,6 @@ export async function unregisterPush() {
   if (!registered) return;
   await api.delete('/me/push-token', { data: { token: registered } }).catch(() => {});
   registered = null;
-}
-
-// Where a tapped notification should open, per role.
-function target(role: Role, link?: { kind: string; id: string }): Href | null {
-  if (!link) return null;
-  if (link.kind === 'booking') {
-    if (role === 'customer') return `/booking/${link.id}` as Href;
-    if (role === 'driver' || role === 'guard') return `/assignment/${link.id}` as Href;
-    if (role === 'admin') return `/dispatch/${link.id}` as Href;
-  }
-  if (link.kind === 'case') return (role === 'admin' ? `/cases/${link.id}` : `/case/${link.id}`) as Href;
-  if (link.kind === 'sos' && role === 'admin') return '/overview' as Href;
-  return null;
 }
 
 // Mounted once at the root: registers after sign-in and routes taps on notifications.
