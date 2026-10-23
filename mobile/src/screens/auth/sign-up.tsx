@@ -2,11 +2,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { StyleSheet, View } from 'react-native';
+import { Linking, StyleSheet, View } from 'react-native';
 
 import { Button, Header, PhoneField, Screen, Text, TextField } from '@/components/ui';
 import { AuthError, requestOtp } from '@/features/auth/api';
 import { signUpSchema, type SignUpForm } from '@/features/auth/schemas';
+import { PRIVACY_URL, TERMS_URL } from '@/lib/config';
 import { space } from '@/theme';
 
 export function SignUp() {
@@ -37,6 +38,17 @@ export function SignUp() {
             </Text>
           ) : null}
           <Button label="Continue" loading={formState.isSubmitting} onPress={onSubmit} />
+          <Text variant="caption" tone="muted" style={{ textAlign: 'center' }}>
+            By continuing you agree to the{' '}
+            <Text variant="caption" tone="accent" onPress={() => Linking.openURL(TERMS_URL)}>
+              Terms
+            </Text>{' '}
+            and{' '}
+            <Text variant="caption" tone="accent" onPress={() => Linking.openURL(PRIVACY_URL)}>
+              Privacy policy
+            </Text>
+            .
+          </Text>
         </>
       }>
       <View style={styles.intro}>

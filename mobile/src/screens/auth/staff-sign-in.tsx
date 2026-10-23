@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { Eye, EyeOff, Info } from 'lucide-react-native';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -79,6 +79,7 @@ export function StaffSignIn() {
             />
           )}
         />
+        <Button label="Forgot password?" variant="ghost" onPress={() => router.push('/forgot-password' as Href)} />
       </View>
 
       <Card tinted style={styles.note}>

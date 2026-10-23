@@ -8,6 +8,7 @@ import { AppError, notFound, unauthorized } from '@/lib/errors';
 import { checkOtp, sendOtp } from '@/lib/otp';
 import { normalizePkMobile, pkMobile } from '@/lib/phone';
 import { consumeRefresh, issueRefresh, revokeRefresh, signAccess } from '@/lib/tokens';
+import { BookingModel } from '@/models/booking';
 import { CompanyModel } from '@/models/company';
 import { UserModel, type UserDoc } from '@/models/user';
 
@@ -142,6 +143,72 @@ authRouter.patch(
     res.json({ user });
   },
 );
+
+// Customers delete their own account (Play Store requirement). Personal details are removed;
+// anonymous booking and payment records stay for tax and dispute purposes.
+authRouter.delete('/me', requireAuth, async (req, res) => {
+  const u = me(req);
+  if (u.role !== 'customer') throw new AppError(403, 'forbidden', 'Staff and partner accounts are closed by their company or by My Captain.');
+  const active = await BookingModel.exists({ customer: u.id, status: { $in: ['paid', 'assigning', 'confirmed', 'arriving', 'on_duty'] } });
+  if (active) throw new AppError(409, 'active_bookings', 'Finish or cancel your active bookings before deleting your account.');
+  const user = await UserModel.findById(u.id);
+  if (!user) throw notFound('Account');
+  user.name = 'Deleted customer';
+  user.phone = `deleted:${user.id}`;
+  user.email = undefined;
+  user.avatarUrl = undefined;
+  user.status = 'suspended';
+  user.tokenVersion += 1;
+  await user.save();
+  res.status(204).end();
+});
+
+// Forgot password (staff, partners, admins). A code goes to the account's phone by SMS.
+// The reply is the same whether or not the account exists, so numbers cannot be probed.
+authRouter.post(
+  '/password/forgot',
+  authLimiter,
+  body(z.object({ identifier: z.string().trim().min(3).max(120) })),
+  async (req, res) => {
+    const { identifier } = req.body as { identifier: string };
+    const phone = normalizePkMobile(identifier);
+    const user = await UserModel.findOne(phone ? { phone } : { email: identifier.toLowerCase() }).select('role status phone').lean();
+    let sentTo: string | undefined;
+    if (user && user.role !== 'customer' && user.status === 'active') {
+      const r = await sendOtp(user.phone);
+      sentTo = user.phone;
+      // Development convenience only (sendOtp never returns it in production).
+      if ('devCode' in r) return res.json({ sent: true, phoneHint: maskPhone(sentTo), devCode: r.devCode });
+    }
+    res.json({ sent: true, ...(sentTo ? { phoneHint: maskPhone(sentTo) } : {}) });
+  },
+);
+
+authRouter.post(
+  '/password/reset',
+  authLimiter,
+  body(
+    z.object({
+      identifier: z.string().trim().min(3).max(120),
+      code: z.string().regex(/^\d{6}$/, 'Enter the 6-digit code.'),
+      password: z.string().min(8, 'Use at least 8 characters.').max(200),
+    }),
+  ),
+  async (req, res) => {
+    const { identifier, code, password } = req.body as { identifier: string; code: string; password: string };
+    const phone = normalizePkMobile(identifier);
+    const user = await UserModel.findOne(phone ? { phone } : { email: identifier.toLowerCase() });
+    if (!user || user.role === 'customer') throw new AppError(400, 'otp_expired', 'This code has expired. Request a new one.');
+    await checkOtp(user.phone, code);
+    await user.setPassword(password);
+    // Sign out everywhere: whoever knew the old password loses access.
+    user.tokenVersion += 1;
+    await user.save();
+    res.json({ reset: true });
+  },
+);
+
+const maskPhone = (p: string) => `${p.slice(0, 5)}*****${p.slice(-2)}`;
 
 // Password change signs out every other session by bumping tokenVersion.
 authRouter.post(

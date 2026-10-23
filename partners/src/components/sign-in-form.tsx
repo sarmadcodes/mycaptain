@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
@@ -37,6 +38,9 @@ export function SignInForm() {
       }}>
       <Input label="Email or phone" name="identifier" autoComplete="username" placeholder="you@company.pk or 3001234567" />
       <Input label="Password" name="password" type="password" autoComplete="current-password" />
+      <Link href="/forgot-password" className="-mt-2 block text-sm font-semibold text-blue hover:underline">
+        Forgot password?
+      </Link>
       {error ? (
         <p role="alert" className="rounded-xl bg-pale px-4 py-3 text-sm text-danger">
           {error}

@@ -43,7 +43,8 @@ const schema = new Schema<User, Model<User, object, Methods>, Methods>(
       required: true,
       unique: true,
       set: (v: string) => normalizePkMobile(v) ?? v,
-      validate: { validator: (v: string) => /^\+923\d{9}$/.test(v), message: 'Enter a valid Pakistani mobile number.' },
+      // Deleted accounts keep a unique placeholder so the real number can sign up again.
+      validate: { validator: (v: string) => /^\+923\d{9}$/.test(v) || /^deleted:[a-f\d]{24}$/.test(v), message: 'Enter a valid Pakistani mobile number.' },
     },
     email: { type: String, trim: true, lowercase: true, maxlength: 120, sparse: true, unique: true },
     passwordHash: { type: String, select: false },

@@ -7,7 +7,7 @@ const items = [
   { icon: UserRound, title: 'Personal details', onPress: () => router.push('/settings/details') },
   { icon: CreditCard, title: 'Payment methods', onPress: () => router.push('/settings/payments') },
   { icon: Receipt, title: 'Invoices and receipts', onPress: () => router.push('/settings/invoices') },
-  { icon: FileText, title: 'Contracts', subtitle: '6-month driver plan', onPress: () => router.push('/settings/contracts') },
+  { icon: FileText, title: 'Contracts', onPress: () => router.push('/settings/contracts') },
   { icon: Bell, title: 'Notifications', onPress: () => router.push('/settings/notifications') },
 ];
 

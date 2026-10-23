@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { UserModel } from '@/models/user';
+
 import { api, auth, customer, passwordUser, uniquePhone } from './helpers';
 
 describe('customer OTP auth', () => {
@@ -90,5 +92,35 @@ describe('otp and password accounts', () => {
   it('never signs a staff or admin account in with a code', async () => {
     const admin = await passwordUser('admin');
     await api().post('/api/v1/auth/otp/verify').send({ phone: admin.phone, code: '123456' }).expect(400);
+  });
+});
+
+describe('forgot password', () => {
+  it('resets with the SMS code, signs out old sessions, and does not reveal unknown accounts', async () => {
+    const admin = await passwordUser('admin');
+    const unknown = await api().post('/api/v1/auth/password/forgot').send({ identifier: uniquePhone() }).expect(200);
+    expect(unknown.body).toEqual({ sent: true });
+
+    const sent = await api().post('/api/v1/auth/password/forgot').send({ identifier: admin.phone }).expect(200);
+    await api().post('/api/v1/auth/password/reset').send({ identifier: admin.phone, code: '000000', password: 'brand-new-pass-1' }).expect(400);
+    await api()
+      .post('/api/v1/auth/password/reset')
+      .send({ identifier: admin.phone, code: sent.body.devCode, password: 'brand-new-pass-1' })
+      .expect(200);
+
+    await api().get('/api/v1/auth/me').set(auth(admin.token)).expect(401);
+    await api().post('/api/v1/auth/login').send({ identifier: admin.phone, password: 'brand-new-pass-1' }).expect(200);
+  });
+});
+
+describe('account deletion', () => {
+  it('removes personal details, signs out, and frees the number for a new sign-up', async () => {
+    const c = await customer('To Be Deleted');
+    await api().delete('/api/v1/auth/me').set(auth(c.token)).expect(204);
+    await api().get('/api/v1/auth/me').set(auth(c.token)).expect(401);
+    const left = await UserModel.findById(c.user.id).lean();
+    expect(left).toMatchObject({ name: 'Deleted customer', status: 'suspended' });
+    expect(left?.email).toBeUndefined();
+    expect(await UserModel.exists({ phone: `+92${c.phone}` })).toBeNull();
   });
 });
