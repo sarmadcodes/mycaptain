@@ -17,7 +17,7 @@ const expiry = (s: string) => {
   return d.length > 2 ? `${d.slice(0, 2)}/${d.slice(2)}` : d;
 };
 
-// TODO(payments): the real form is the payment provider's hosted fields; this mirrors its layout.
+// Demo: nothing is stored. With a real provider this becomes its hosted card fields.
 export function AddPaymentMethod() {
   const [kind, setKind] = useState<'card' | 'wallet'>('card');
   const [number, setNumber] = useState('');
@@ -25,7 +25,6 @@ export function AddPaymentMethod() {
   const [name, setName] = useState('');
   const [wallet, setWallet] = useState('');
   const [error, setError] = useState<string>();
-  const [saving, setSaving] = useState(false);
 
   const save = async () => {
     if (kind === 'card' && (number.replace(/\s/g, '').length < 16 || exp.length < 5 || name.trim().length < 3)) {
@@ -33,13 +32,11 @@ export function AddPaymentMethod() {
     }
     if (kind === 'wallet' && !/^3\d{9}$/.test(wallet)) return setError('Enter the wallet mobile number.');
     setError(undefined);
-    setSaving(true);
-    await new Promise((r) => setTimeout(r, 900));
     router.back();
   };
 
   return (
-    <Screen header={<Header title="Add payment method" />} footer={<Button label="Save" loading={saving} onPress={save} />}>
+    <Screen header={<Header title="Add payment method" />} footer={<Button label="Save" onPress={save} />}>
       <View style={styles.form}>
         <Segmented
           value={kind}
@@ -95,7 +92,7 @@ export function AddPaymentMethod() {
             <Smartphone color={colors.textMuted} size={16} strokeWidth={1.75} />
           )}
           <Text variant="caption" tone="muted" style={{ flex: 1 }}>
-            Details go straight to the payment provider. My Captain never stores your full card number.
+            Demo mode: nothing is saved or charged. With real payments, details go straight to the payment provider and My Captain never stores your full card number.
           </Text>
         </View>
       </View>

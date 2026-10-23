@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { AppError, badRequest, notFound } from '@/lib/errors';
 import { notify, type NotifyInput } from '@/lib/notify';
+import { refundBooking } from '@/modules/payments';
 import { emit } from '@/lib/realtime';
 import { me, requireAuth, requireRole, type AuthUser } from '@/middleware/auth';
 import { body, parse } from '@/middleware/validate';
@@ -281,11 +282,12 @@ bookingsRouter.post(
     if (to === 'on_duty') b.startedAt = new Date();
     if (to === 'completed') b.completedAt = new Date();
     if (to === 'paid') {
-      // TODO(phase 4): set by the payment provider webhook, not manually.
+      // Admin override, e.g. a bank transfer confirmed by hand. Customers pay through /pay.
       b.paidAt = new Date();
       pushHistory(b, 'assigning', u, 'Waiting for partner assignment');
     }
     await b.save();
+    if (to === 'cancelled' && b.paidAt) await refundBooking(b.id);
     await notifyStatus(b, previous, u.id);
     res.json({ booking: await broadcast(b) });
   },

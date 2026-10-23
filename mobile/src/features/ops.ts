@@ -69,6 +69,17 @@ export function useSosStatus() {
   });
 }
 
+// ---------- Payments (demo provider for now) ----------
+
+export function usePay() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ bookingId, method }: { bookingId: string; method: 'card' | 'wallet' | 'bank' }) =>
+      call(api.post<{ payment: { reference: string; amount: number }; booking: ApiBooking }>(`/bookings/${bookingId}/pay`, { method })),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['bookings'] }),
+  });
+}
+
 // ---------- Ratings ----------
 
 export function useRate(bookingId: string) {
