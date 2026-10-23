@@ -55,3 +55,26 @@ describe('email codes', () => {
     await api().post('/api/v1/auth/otp/request').send({ phone: uniquePhone(), purpose: 'sign-up', email: 'same@example.com' }).expect(409);
   });
 });
+
+describe('demo accounts', () => {
+  it('sign in with the demo code only while DEMO_MODE is on, and are never emailed', async () => {
+    const { UserModel } = await import('@/models/user');
+    await UserModel.create({ role: 'customer', name: 'Demo Customer', phone: `+92${uniquePhone()}`, email: 'customer@gmail.com' });
+    const e = env as { DEMO_MODE: boolean };
+
+    e.DEMO_MODE = true;
+    const r = await api().post('/api/v1/auth/otp/request').send({ email: 'customer@gmail.com', purpose: 'sign-in' }).expect(200);
+    expect(r.body).toMatchObject({ demo: true });
+    expect(r.body.phone).toBeUndefined(); // never reveal the number behind an email
+    expect(sent).toHaveLength(0);
+    await api().post('/api/v1/auth/otp/verify').send({ identifierEmail: 'customer@gmail.com', code: '000000' }).expect(400);
+    await api().post('/api/v1/auth/otp/verify').send({ identifierEmail: 'customer@gmail.com', code: '123456' }).expect(201);
+
+    e.DEMO_MODE = false;
+    await api().post('/api/v1/auth/otp/verify').send({ identifierEmail: 'customer@gmail.com', code: '123456' }).expect(400);
+  });
+
+  it('refuses a verify with neither phone nor email', async () => {
+    await api().post('/api/v1/auth/otp/verify').send({ code: '123456' }).expect(400);
+  });
+});

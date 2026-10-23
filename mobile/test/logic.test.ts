@@ -90,3 +90,15 @@ describe('notification taps', () => {
     expect(notificationTarget('customer', undefined)).toBeNull();
   });
 });
+
+describe('sign-in identifier', () => {
+  it('accepts a number in any common format, or an email', async () => {
+    const { parseIdentifier } = await import('@/utils/phone');
+    expect(parseIdentifier('3001234567')).toEqual({ phone: '3001234567' });
+    expect(parseIdentifier('0300 1234567')).toEqual({ phone: '3001234567' });
+    expect(parseIdentifier('+92 300-1234567')).toEqual({ phone: '3001234567' });
+    expect(parseIdentifier(' Customer@Gmail.com ')).toEqual({ email: 'customer@gmail.com' });
+    expect(parseIdentifier('12345')).toBeNull();
+    expect(parseIdentifier('not an email@')).toBeNull();
+  });
+});

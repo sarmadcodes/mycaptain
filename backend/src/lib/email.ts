@@ -1,5 +1,6 @@
 import { env, isProd, isTest } from '@/config/env';
 
+import { isDemoEmail } from './demo';
 import { AppError } from './errors';
 import { logger } from './logger';
 
@@ -31,6 +32,8 @@ const text = (e: Email) => [e.heading, '', ...e.lines, ...(e.cta ? ['', `${e.cta
 
 export async function sendEmail(e: Email) {
   if (!e.to) return;
+  // Demo addresses are real inboxes we do not own: never send to them.
+  if (isDemoEmail(e.to)) return;
   if (isTest) return void sent.push(e);
   try {
     if (env.EMAIL_PROVIDER === 'console') {

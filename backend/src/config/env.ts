@@ -35,6 +35,9 @@ const schema = z
 
     // Where one-time codes go. email: sent to the account's email address (phone is still collected).
     OTP_CHANNEL: z.enum(['sms', 'email']).default('sms'),
+    // Tester accounts (src/lib/demo.ts) sign in without a code. Switch off before real launch.
+    DEMO_MODE: z.stringbool().default(false),
+    DEMO_CODE: z.string().regex(/^\d{6}$/).default('123456'),
     SMS_PROVIDER: z.enum(['console', 'twilio', 'http']).default('console'),
     // Test numbers that skip SMS and accept OTP_TEST_CODE (development and testing only).
     OTP_TEST_PHONES: z

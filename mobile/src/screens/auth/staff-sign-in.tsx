@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { Button, Card, Header, PhoneField, Screen, Text, TextField } from '@/components/ui';
+import { Button, Card, Header, Screen, Text, TextField } from '@/components/ui';
 import { AuthError, staffSignIn } from '@/features/auth/api';
 import { staffSignInSchema, type StaffSignInForm } from '@/features/auth/schemas';
 import { colors, iconSize, iconStroke, space } from '@/theme';
@@ -15,7 +15,7 @@ export function StaffSignIn() {
   const [showPassword, setShowPassword] = useState(false);
   const { control, handleSubmit, formState } = useForm<StaffSignInForm>({
     resolver: zodResolver(staffSignInSchema),
-    defaultValues: { phone: '', password: '' },
+    defaultValues: { identifier: '', password: '' },
   });
 
   const onSubmit = handleSubmit(async (values) => {
@@ -40,10 +40,14 @@ export function StaffSignIn() {
       <View style={styles.fields}>
         <Controller
           control={control}
-          name="phone"
+          name="identifier"
           render={({ field, fieldState }) => (
-            <PhoneField
-              label="Registered mobile number"
+            <TextField
+              label="Mobile number or email"
+              placeholder="300 123 4567 or you@example.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="username"
               autoFocus
               value={field.value}
               onChangeText={field.onChange}

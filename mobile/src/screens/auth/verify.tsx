@@ -10,7 +10,17 @@ import { formatPkPhone } from '@/utils/phone';
 const RESEND_SECONDS = 30;
 
 export function Verify() {
-  const params = useLocalSearchParams<{ phone: string; purpose: OtpPurpose; name?: string; email?: string; devCode?: string; sentTo?: string }>();
+  const params = useLocalSearchParams<{
+    phone: string;
+    loginEmail?: string;
+    purpose: OtpPurpose;
+    name?: string;
+    email?: string;
+    devCode?: string;
+    sentTo?: string;
+    demo?: string;
+  }>();
+  const phone = params.phone || undefined;
   const [sentTo, setSentTo] = useState(params.sentTo);
   const [devCode, setDevCode] = useState(params.devCode);
   const [code, setCode] = useState('');
@@ -30,7 +40,8 @@ export function Verify() {
     setLoading(true);
     try {
       await verifyOtp({
-        phone: params.phone,
+        phone,
+        identifierEmail: phone ? undefined : params.loginEmail,
         code: value,
         name: params.name,
         email: params.email || undefined,
@@ -47,7 +58,7 @@ export function Verify() {
     setError(undefined);
     setResendIn(RESEND_SECONDS);
     try {
-      const r = await requestOtp(params.phone, params.purpose, params.purpose === 'sign-up' ? params.email : undefined);
+      const r = await requestOtp(phone, params.purpose, params.purpose === 'sign-up' ? params.email : params.loginEmail || undefined);
       setDevCode(r.devCode);
       setSentTo(r.sentTo);
     } catch (e) {
@@ -61,7 +72,13 @@ export function Verify() {
       footer={<Button label="Verify" loading={loading} disabled={code.length !== 6} onPress={() => submit()} />}>
       <View style={styles.intro}>
         <Text variant="title">Enter the code</Text>
-        <Text tone="muted">{sentTo ? `Sent by email to ${sentTo}. Check spam if it is not in your inbox.` : `Sent by SMS to +92 ${formatPkPhone(params.phone ?? '')}`}</Text>
+        <Text tone="muted">
+          {params.demo
+            ? 'Demo account: enter 123456.'
+            : sentTo
+              ? `Sent by email to ${sentTo}. Check spam if it is not in your inbox.`
+              : `Sent by SMS to +92 ${formatPkPhone(params.phone ?? '')}`}
+        </Text>
         {devCode ? (
           <Text variant="label" tone="accent">
             Test build code: {devCode}

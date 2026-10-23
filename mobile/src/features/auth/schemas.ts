@@ -1,10 +1,13 @@
 import { z } from 'zod';
 
-import { isValidPkMobile } from '@/utils/phone';
+import { isValidPkMobile, parseIdentifier } from '@/utils/phone';
 
 const phone = z.string().refine(isValidPkMobile, 'Enter a valid mobile number, like 300 123 4567.');
 
 export const phoneSchema = z.object({ phone });
+
+const identifier = z.string().refine((v) => !!parseIdentifier(v), 'Enter your mobile number (300 123 4567) or email.');
+export const signInSchema = z.object({ identifier });
 
 export const signUpSchema = z.object({
   name: z.string().trim().min(2, 'Enter your full name.'),
@@ -14,10 +17,11 @@ export const signUpSchema = z.object({
 });
 
 export const staffSignInSchema = z.object({
-  phone,
+  identifier,
   password: z.string().min(1, 'Enter your password.'),
 });
 
 export type PhoneForm = z.infer<typeof phoneSchema>;
+export type SignInForm = z.infer<typeof signInSchema>;
 export type SignUpForm = z.infer<typeof signUpSchema>;
 export type StaffSignInForm = z.infer<typeof staffSignInSchema>;

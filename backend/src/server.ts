@@ -26,6 +26,7 @@ async function main() {
   const server = createServer(createApp());
   attachRealtime(server);
   startJobs();
+  if (env.DEMO_MODE) logger.warn('DEMO_MODE is on: tester accounts sign in without a code. Turn it off before real launch.');
   server.listen(env.PORT, env.HOST, () => logger.info(`api listening on ${env.HOST}:${env.PORT}`));
 
   // Graceful shutdown: stop accepting, finish in-flight requests, close connections.

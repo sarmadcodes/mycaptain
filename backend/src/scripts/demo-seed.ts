@@ -1,5 +1,6 @@
 // Demo accounts and sample data for showing the app and the website.
-// Run: DEMO_PASSWORD='...' DEMO_CUSTOMER_EMAIL='you@example.com' node dist/scripts/demo-seed.js
+// Run: node dist/scripts/demo-seed.js   (password: DEMO_PASSWORD, default testing123)
+// The customer signs in with code DEMO_CODE while DEMO_MODE=true; see src/lib/demo.ts.
 // Safe to run again: existing demo records are reused, sample bookings are only created once.
 import { Types } from 'mongoose';
 
@@ -14,8 +15,7 @@ import { nextRef } from '@/models/shared';
 import { UserModel, type Role } from '@/models/user';
 import { quote, type QuoteInput } from '@/modules/pricing';
 
-const password = process.env.DEMO_PASSWORD ?? '';
-const customerEmail = (process.env.DEMO_CUSTOMER_EMAIL ?? '').trim().toLowerCase();
+const password = process.env.DEMO_PASSWORD || 'testing123';
 const H = 3600_000;
 
 async function user(role: Role, name: string, phone: string, extra: Record<string, unknown> = {}) {
@@ -29,14 +29,13 @@ async function user(role: Role, name: string, phone: string, extra: Record<strin
 
 async function main() {
   if (password.length < 10) throw new Error('Set DEMO_PASSWORD to at least 10 characters.');
-  if (!/^\S+@\S+\.\S+$/.test(customerEmail)) throw new Error('Set DEMO_CUSTOMER_EMAIL to an inbox you can open (customer codes go there).');
   await connectDb();
   const rates = await currentRates();
 
   // ---------- People and company ----------
-  const admin = await user('admin', 'Demo Operations', '+923000000001', { email: 'admin@demo.mycaptain.pk' });
+  const admin = await user('admin', 'Demo Operations', '+923000000001', { email: 'admin@gmail.com' });
 
-  const owner = await user('partner', 'Tariq Hussain', '+923000000002', { email: 'partner@demo.mycaptain.pk' });
+  const owner = await user('partner', 'Tariq Hussain', '+923000000002', { email: 'partner@gmail.com' });
   let company = await CompanyModel.findOne({ ntn: '9990001-1' });
   if (!company) {
     company = await CompanyModel.create({
@@ -72,15 +71,15 @@ async function main() {
   owner.company = company._id;
   await owner.save();
 
-  const staff = async (staffKind: 'driver' | 'guard' | 'gunman', name: string, phone: string) =>
-    user(staffKind === 'driver' ? 'driver' : 'guard', name, phone, { company: company!._id, staffKind, available: true });
-  const driver = await staff('driver', 'Ahmed Raza', '+923000000011');
-  const guard1 = await staff('guard', 'Bilal Khan', '+923000000012');
+  const staff = async (staffKind: 'driver' | 'guard' | 'gunman', name: string, phone: string, email?: string) =>
+    user(staffKind === 'driver' ? 'driver' : 'guard', name, phone, { company: company!._id, staffKind, available: true, ...(email ? { email } : {}) });
+  const driver = await staff('driver', 'Ahmed Raza', '+923000000011', 'staff@gmail.com');
+  const guard1 = await staff('guard', 'Bilal Khan', '+923000000012', 'guard@gmail.com');
   const guard2 = await staff('guard', 'Usman Ali', '+923000000013');
-  const gunman = await staff('gunman', 'Imran Shah', '+923000000014');
+  const gunman = await staff('gunman', 'Imran Shah', '+923000000014', 'gunman@gmail.com');
 
   // A second company still waiting for review, so the admin has something to approve.
-  const pendingOwner = await user('partner', 'Sana Malik', '+923000000003', { email: 'pending@demo.mycaptain.pk' });
+  const pendingOwner = await user('partner', 'Sana Malik', '+923000000003', { email: 'pending@gmail.com' });
   if (!(await CompanyModel.exists({ ntn: '9990002-2' }))) {
     const pending = await CompanyModel.create({
       ref: await nextRef('company', 'MCP', 100000),
@@ -102,7 +101,7 @@ async function main() {
     await pendingOwner.save();
   }
 
-  const customer = await user('customer', 'Ayesha Khan', '+923000000021', { email: customerEmail });
+  const customer = await user('customer', 'Ayesha Khan', '+923000000021', { email: 'customer@gmail.com' });
 
   for (const car of [
     { name: 'Toyota Corolla Altis', class: 'sedan', seats: 4, perDay: 9000 },
@@ -199,19 +198,15 @@ async function main() {
   }
 
   await disconnectDb();
-  const line = (who: string, login: string, how: string) => `  ${who.padEnd(22)} ${login.padEnd(34)} ${how}`;
   // eslint-disable-next-line no-console
   console.log(
     [
       '',
-      'Demo accounts (password = DEMO_PASSWORD unless noted):',
-      line('Admin (app + /admin)', '3000000001 or admin@demo.mycaptain.pk', 'password'),
-      line('Partner (website)', 'partner@demo.mycaptain.pk', 'password'),
-      line('Pending partner', 'pending@demo.mycaptain.pk', 'password (shows review state)'),
-      line('Driver (app, staff)', '3000000011', 'password'),
-      line('Guard (app, staff)', '3000000012 / 3000000013', 'password'),
-      line('Armed gunman (app)', '3000000014', 'password, has a live duty'),
-      line('Customer (app)', `3000000021`, `email code sent to ${customerEmail}`),
+      `Demo accounts, password ${password === 'testing123' ? 'testing123' : '(DEMO_PASSWORD)'}:`,
+      '  Admin      admin@gmail.com     website /admin, or app Staff sign in',
+      '  Partner    partner@gmail.com   website (also pending@gmail.com, a company still in review)',
+      '  Staff      staff@gmail.com     app Staff sign in (driver); guard@gmail.com, gunman@gmail.com (live duty)',
+      '  Customer   customer@gmail.com  app Sign in, then code 123456 (needs DEMO_MODE=true)',
       '',
     ].join('\n'),
   );

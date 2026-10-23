@@ -6,6 +6,7 @@ import { authLimiter } from '@/middleware/rate-limit';
 import { body } from '@/middleware/validate';
 import { AppError, notFound, unauthorized } from '@/lib/errors';
 import { env } from '@/config/env';
+import { demoSignIn } from '@/lib/demo';
 import { kv } from '@/lib/kv';
 import { checkOtp, sendOtp } from '@/lib/otp';
 import { normalizePkMobile, pkMobile } from '@/lib/phone';
@@ -31,16 +32,26 @@ export async function issueSession(user: UserDoc) {
 authRouter.post(
   '/otp/request',
   authLimiter,
-  body(z.object({ phone: pkMobile, purpose: z.enum(['sign-in', 'sign-up']), email: z.email().max(120).toLowerCase().optional() })),
+  body(
+    z
+      .object({ phone: pkMobile.optional(), purpose: z.enum(['sign-in', 'sign-up']), email: z.email().max(120).toLowerCase().optional() })
+      .refine((v) => v.phone || (v.purpose === 'sign-in' && v.email), { message: 'Enter your mobile number.', path: ['phone'] }),
+  ),
   async (req, res) => {
-    const { phone, purpose, email } = req.body as { phone: string; purpose: 'sign-in' | 'sign-up'; email?: string };
-    const existing = await UserModel.findOne({ phone }).select('role status email').lean();
+    const { purpose, email } = req.body as { phone?: string; purpose: 'sign-in' | 'sign-up'; email?: string };
+    if (!req.body.phone && !email) throw new AppError(400, 'bad_request', 'Enter your mobile number or email.');
+    // Sign-in may use the email instead of the number.
+    const existing = await UserModel.findOne(req.body.phone ? { phone: req.body.phone } : { email }).select('role status email phone').lean();
+    const phone: string = req.body.phone ?? existing?.phone ?? '';
     if (existing && existing.role !== 'customer') {
       throw new AppError(400, 'use_password', 'This number belongs to a staff account. Use staff sign in.');
     }
-    if (purpose === 'sign-in' && !existing) throw new AppError(404, 'no_account', 'No account with this number. Create one first.');
+    if (purpose === 'sign-in' && !existing) throw new AppError(404, 'no_account', 'No account found. Create one first.');
     if (purpose === 'sign-up' && existing) throw new AppError(409, 'account_exists', 'An account with this number already exists. Sign in instead.');
     if (existing?.status === 'suspended') throw new AppError(403, 'suspended', 'This account is suspended. Contact support.');
+    if (existing && purpose === 'sign-in' && demoSignIn(existing)) {
+      return res.json({ resendIn: 30, expiresIn: 300, channel: env.OTP_CHANNEL, demo: true });
+    }
 
     // Email codes: sign-up sends to the address entered (remembered for account creation);
     // sign-in sends to the address on the account.
@@ -67,20 +78,29 @@ authRouter.post(
   authLimiter,
   body(
     z.object({
-      phone: pkMobile,
+      // Sign-in may identify the account by email instead (sign-up always needs the number).
+      phone: pkMobile.optional(),
+      identifierEmail: z.email().max(120).toLowerCase().optional(),
       code: z.string().regex(/^\d{6}$/, 'Enter the 6-digit code.'),
       name: z.string().trim().min(2).max(80).optional(),
       email: z.email().max(120).optional(),
     }),
   ),
   async (req, res) => {
-    const { phone, code, name, email } = req.body as { phone: string; code: string; name?: string; email?: string };
+    const { code, name, email, identifierEmail } = req.body as { phone?: string; identifierEmail?: string; code: string; name?: string; email?: string };
+    if (!req.body.phone && !identifierEmail) throw new AppError(400, 'bad_request', 'Enter your mobile number or email.');
     // Staff, partner and admin accounts never sign in with a code: they need their password.
-    const existing = await UserModel.findOne({ phone }).select('role').lean();
+    const existing = await UserModel.findOne(req.body.phone ? { phone: req.body.phone } : { email: identifierEmail }).select('role email phone').lean();
+    if (!req.body.phone && !existing) throw new AppError(400, 'otp_expired', 'This code has expired. Request a new one.');
+    const phone: string = req.body.phone ?? existing!.phone;
     if (existing && existing.role !== 'customer') {
       throw new AppError(400, 'use_password', 'This number belongs to a staff account. Use staff sign in.');
     }
-    await checkOtp(phone, code);
+    if (existing && demoSignIn(existing)) {
+      if (code !== env.DEMO_CODE) throw new AppError(400, 'otp_invalid', 'That code is not correct.');
+    } else {
+      await checkOtp(phone, code);
+    }
     let user = await UserModel.findOne({ phone });
     if (!user) {
       if (!name) throw new AppError(400, 'name_required', 'Enter your name to create an account.');

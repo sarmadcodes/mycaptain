@@ -4,17 +4,18 @@ import { disconnectSocket } from '@/services/socket';
 import { queryClient } from '@/lib/query-client';
 import { useAuth } from '@/stores/auth';
 import type { Session } from '@/types/api';
-import { toE164 } from '@/utils/phone';
+import { parseIdentifier, toE164 } from '@/utils/phone';
 
 export type OtpPurpose = 'sign-in' | 'sign-up';
 
 export { ApiError as AuthError };
 
 // The code goes by email or SMS, whichever the server is set to; `sentTo` says where.
-export async function requestOtp(phone: string, purpose: OtpPurpose, email?: string) {
+// Sign-in may use the email instead of the number (pass phone undefined).
+export async function requestOtp(phone: string | undefined, purpose: OtpPurpose, email?: string) {
   try {
-    const { data } = await api.post<{ resendIn: number; devCode?: string; channel: 'sms' | 'email'; sentTo?: string }>('/auth/otp/request', {
-      phone: toE164(phone),
+    const { data } = await api.post<{ resendIn: number; devCode?: string; channel: 'sms' | 'email'; sentTo?: string; demo?: boolean }>('/auth/otp/request', {
+      ...(phone ? { phone: toE164(phone) } : {}),
       purpose,
       ...(email ? { email } : {}),
     });
@@ -24,9 +25,10 @@ export async function requestOtp(phone: string, purpose: OtpPurpose, email?: str
   }
 }
 
-export async function verifyOtp(params: { phone: string; code: string; name?: string; email?: string }) {
+export async function verifyOtp(params: { phone?: string; identifierEmail?: string; code: string; name?: string; email?: string }) {
   try {
-    const { data } = await api.post<Session>('/auth/otp/verify', { ...params, phone: toE164(params.phone) });
+    const { phone, ...rest } = params;
+    const { data } = await api.post<Session>('/auth/otp/verify', { ...rest, ...(phone ? { phone: toE164(phone) } : {}) });
     await useAuth.getState().setSession(data);
     return data;
   } catch (e) {
@@ -35,9 +37,11 @@ export async function verifyOtp(params: { phone: string; code: string; name?: st
 }
 
 // Drivers, guards and admins. Partners manage their company on the partner website.
-export async function staffSignIn(params: { phone: string; password: string }) {
+export async function staffSignIn(params: { identifier: string; password: string }) {
   try {
-    const { data } = await api.post<Session>('/auth/login', { identifier: toE164(params.phone), password: params.password });
+    const id = parseIdentifier(params.identifier);
+    const identifier = id && 'phone' in id ? toE164(id.phone) : params.identifier.trim().toLowerCase();
+    const { data } = await api.post<Session>('/auth/login', { identifier, password: params.password });
     if (data.user.role === 'partner') {
       await api.post('/auth/logout', { refreshToken: data.refreshToken }).catch(() => {});
       throw new ApiError('Partner accounts are managed on the partner website.', 'use_partner_site');
