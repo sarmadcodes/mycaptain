@@ -8,6 +8,8 @@ export type FileRef = {
   resourceType: string;
   status: 'pending' | 'verified' | 'rejected';
   note?: string;
+  // Licences and certificates that need renewing.
+  expiresAt?: Date;
   uploadedAt: Date;
 };
 
@@ -19,6 +21,7 @@ export const fileRefSchema = new Schema<FileRef>(
     resourceType: { type: String, default: 'image' },
     status: { type: String, enum: ['pending', 'verified', 'rejected'], default: 'pending' },
     note: { type: String, maxlength: 300 },
+    expiresAt: Date,
     uploadedAt: { type: Date, default: () => new Date() },
   },
   { _id: true },

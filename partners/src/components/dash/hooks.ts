@@ -54,9 +54,10 @@ export function useUpdateStaff() {
 export function useUploadStaffDoc() {
   const invalidate = useInvalidate('staff');
   return useMutation({
-    mutationFn: ({ id, kind, file }: { id: string; kind: string; file: File }) => {
+    mutationFn: ({ id, kind, file, expiresAt }: { id: string; kind: string; file: File; expiresAt?: string }) => {
       const f = new FormData();
       f.append('kind', kind);
+      if (expiresAt) f.append('expiresAt', expiresAt);
       f.append('file', file);
       return upload<{ staff: Staff }>(`/companies/me/staff/${id}/documents`, f);
     },

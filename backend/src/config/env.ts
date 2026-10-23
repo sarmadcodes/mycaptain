@@ -41,6 +41,9 @@ const schema = z
       .transform((s) => s.split(',').map((p) => normalizePkMobile(p.trim())).filter((p): p is string => !!p)),
     OTP_TEST_CODE: z.string().regex(/^\d{6}$/, 'must be 6 digits').default('123456'),
     // demo: checkout succeeds instantly without moving money. Real providers come later.
+    // Background jobs (auto-cancel, reminders, expiry warnings, weekly payouts).
+    JOBS_ENABLED: z.stringbool().default(true),
+    UNPAID_CANCEL_MINUTES: z.coerce.number().int().min(5).max(24 * 60).default(30),
     PAYMENT_PROVIDER: z.enum(['demo']).default('demo'),
     SMS_DAILY_LIMIT: z.coerce.number().int().positive().default(2000),
     TWILIO_ACCOUNT_SID: z.string().optional(),

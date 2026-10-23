@@ -188,12 +188,18 @@ companiesRouter.patch(
 
 companiesRouter.post('/me/staff/:id/documents', ...partner, singleFile, async (req, res) => {
   const { id } = parse(z.object({ id: objectId }), req.params);
-  const { kind } = parse(z.object({ kind: z.enum(['cnic', 'driving_licence', 'arms_licence', 'police_certificate', 'medical', 'training']) }), req.body);
+  const { kind, expiresAt } = parse(
+    z.object({
+      kind: z.enum(['cnic', 'driving_licence', 'arms_licence', 'police_certificate', 'medical', 'training']),
+      expiresAt: z.coerce.date().optional(),
+    }),
+    req.body,
+  );
   const user = await UserModel.findOne({ _id: id, company: me(req).company });
   if (!user) throw notFound('Staff member');
   const stored = await storeUpload(req, `staff/${user.id}`, true);
   user.documents = user.documents.filter((d) => d.kind !== kind) as typeof user.documents;
-  user.documents.push(toFileRef(kind, stored));
+  user.documents.push({ ...toFileRef(kind, stored), expiresAt });
   await user.save();
   res.status(201).json({ staff: user });
 });

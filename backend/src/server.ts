@@ -5,6 +5,7 @@ import { env } from './config/env';
 import { connectDb, disconnectDb } from './lib/db';
 import { redis } from './lib/kv';
 import { logger } from './lib/logger';
+import { startJobs, stopJobs } from './lib/jobs';
 import { attachRealtime, closeRealtime } from './lib/realtime';
 
 async function main() {
@@ -13,6 +14,7 @@ async function main() {
 
   const server = createServer(createApp());
   attachRealtime(server);
+  startJobs();
   server.listen(env.PORT, env.HOST, () => logger.info(`api listening on ${env.HOST}:${env.PORT}`));
 
   // Graceful shutdown: stop accepting, finish in-flight requests, close connections.
@@ -22,6 +24,7 @@ async function main() {
     closing = true;
     logger.info(`${signal} received, shutting down`);
     const force = setTimeout(() => process.exit(1), 10_000).unref();
+    stopJobs();
     server.close();
     await closeRealtime();
     await disconnectDb();

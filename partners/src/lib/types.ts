@@ -29,7 +29,7 @@ export type Staff = {
   phone: string;
   status: 'active' | 'suspended';
   available: boolean;
-  documents: { _id?: string; kind: string; status: string; uploadedAt: string }[];
+  documents: { _id?: string; kind: string; status: string; uploadedAt: string; expiresAt?: string }[];
   lastLoginAt?: string;
   createdAt: string;
 };

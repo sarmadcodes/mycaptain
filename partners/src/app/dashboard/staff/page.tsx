@@ -191,6 +191,7 @@ function StaffDocs({ staffId }: { staffId: string }) {
   const staff = data?.staff.find((s) => s.id === staffId);
   const uploadDoc = useUploadStaffDoc();
   const [kind, setKind] = useState('cnic');
+  const [expiresAt, setExpiresAt] = useState('');
 
   return (
     <div className="space-y-5">
@@ -198,7 +199,10 @@ function StaffDocs({ staffId }: { staffId: string }) {
         {staff?.documents.length ? (
           staff.documents.map((d) => (
             <li key={d.kind} className="flex items-center justify-between rounded-xl border border-line px-4 py-3 text-sm">
-              <span className="font-medium">{DOC_KINDS.find((k) => k.value === d.kind)?.label ?? d.kind}</span>
+              <span className="font-medium">
+                {DOC_KINDS.find((k) => k.value === d.kind)?.label ?? d.kind}
+                {d.expiresAt ? <span className="block text-xs font-normal text-muted">Expires {new Date(d.expiresAt).toLocaleDateString('en-GB')}</span> : null}
+              </span>
               <Badge tone={d.status === 'verified' ? 'green' : d.status === 'rejected' ? 'red' : 'amber'}>{d.status}</Badge>
             </li>
           ))
@@ -208,6 +212,13 @@ function StaffDocs({ staffId }: { staffId: string }) {
       </ul>
       <div className="space-y-3 border-t border-line pt-5">
         <Select label="Document" value={kind} onChange={(e) => setKind(e.target.value)} options={DOC_KINDS} />
+        <Input
+          label="Expiry date (if it has one)"
+          type="date"
+          value={expiresAt}
+          onChange={(e) => setExpiresAt(e.target.value)}
+          hint="We remind you 30 and 7 days before it expires."
+        />
         <label className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-line text-sm font-medium text-blue hover:border-blue">
           <FileArrowUpIcon size={18} />
           {uploadDoc.isPending ? 'Uploading...' : 'Choose file and upload'}
@@ -219,7 +230,7 @@ function StaffDocs({ staffId }: { staffId: string }) {
             onChange={(e) => {
               const file = e.target.files?.[0];
               e.target.value = '';
-              if (file) uploadDoc.mutate({ id: staffId, kind, file });
+              if (file) uploadDoc.mutate({ id: staffId, kind, file, expiresAt: expiresAt || undefined }, { onSuccess: () => setExpiresAt('') });
             }}
           />
         </label>
