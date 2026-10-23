@@ -17,13 +17,19 @@
         "buildType": "apk"
       },
       "env": {
-        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true",
+        "EXPO_PUBLIC_API_URL": "https://mycaptain.threadique.live/backend/api/v1",
+        "EXPO_PUBLIC_SOCKET_URL": "https://mycaptain.threadique.live",
+        "EXPO_PUBLIC_PARTNER_URL": "https://mycaptain.threadique.live"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true",
+        "EXPO_PUBLIC_API_URL": "https://mycaptain.threadique.live/backend/api/v1",
+        "EXPO_PUBLIC_SOCKET_URL": "https://mycaptain.threadique.live",
+        "EXPO_PUBLIC_PARTNER_URL": "https://mycaptain.threadique.live"
       }
     }
   },
