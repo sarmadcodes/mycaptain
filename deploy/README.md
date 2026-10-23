@@ -32,6 +32,22 @@ Two processes run on the server, both reachable only through Nginx over HTTPS:
 
 The API refuses to start in production without Redis, Cloudinary, a real SMS provider or with `http://` CORS origins.
 
+## Other services
+
+| Setting (`backend/.env`) | What it does | Where to get it |
+|---|---|---|
+| `EMAIL_PROVIDER=resend`, `RESEND_API_KEY`, `EMAIL_FROM` | Application, approval, receipt and payout emails | resend.com, verify your domain first |
+| `PARTNER_SITE_URL=https://partners.<domain>` | Links inside emails | |
+| `SENTRY_DSN` (also `SENTRY_DSN` and `NEXT_PUBLIC_SENTRY_DSN` in `partners/.env.production`, `EXPO_PUBLIC_SENTRY_DSN` for the app) | Error monitoring | sentry.io, one project per part |
+| `PUSH_ENABLED=true`, optional `EXPO_ACCESS_TOKEN` | Push notifications via Expo | Android also needs FCM credentials uploaded with `eas credentials` |
+| `JOBS_ENABLED=true`, `UNPAID_CANCEL_MINUTES=30` | Auto-cancel unpaid bookings, reminders, expiry warnings, Monday payouts | |
+| `PAYMENT_PROVIDER=demo` | Checkout completes without charging. Replace before taking real money | |
+| `OTP_TEST_PHONES` | Leave empty: the API refuses to start in production with test numbers | |
+
+## GitHub deploys
+
+`.github/workflows/ci.yml` tests everything on each push. To deploy `main` automatically after the tests pass, add these repository secrets (Settings, Secrets and variables, Actions): `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY` (a deploy key whose public half is in the server user's `~/.ssh/authorized_keys`) and `VPS_APP_DIR` (the clone path). Until they exist the deploy step is skipped.
+
 ## SMS provider
 
 Set `SMS_PROVIDER` in `backend/.env`:
