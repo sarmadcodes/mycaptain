@@ -1,0 +1,10 @@
+# EAS builds the mobile app only; skip the other projects and local caches.
+/backend/
+/partners/
+/deploy/
+/.github/
+**/node_modules/
+**/.next/
+**/dist/
+.env
+mobile/.env
