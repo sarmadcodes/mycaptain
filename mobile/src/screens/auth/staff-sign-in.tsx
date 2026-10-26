@@ -69,7 +69,7 @@ export function StaffSignIn() {
               value={field.value}
               onChangeText={field.onChange}
               onBlur={field.onBlur}
-              onSubmitEditing={onSubmit}
+              onSubmitEditing={() => onSubmit()}
               error={fieldState.error?.message ?? error}
               suffix={
                 <Pressable

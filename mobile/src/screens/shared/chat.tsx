@@ -72,7 +72,7 @@ export function Chat({ asStaff = false }: { asStaff?: boolean }) {
             <Text tone="muted" style={{ textAlign: 'center' }}>
               No messages yet. Say hello.
             </Text>
-          ) : null
+          ) : undefined
         }
         renderItem={({ item }) => {
           const mine = item.from.id === myId;

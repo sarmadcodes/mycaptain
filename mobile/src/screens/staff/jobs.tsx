@@ -26,7 +26,7 @@ export function StaffJobs() {
       <ScrollView
         contentContainerStyle={[styles.content, r.content, { gap: r.compact ? space.xl : space.xxl }]}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.blue} />}>
+        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} tintColor={colors.blue} />}>
         <View style={{ gap: 2 }}>
           <Text variant="label" tone="muted">
             Welcome, {user?.name.split(' ')[0]}

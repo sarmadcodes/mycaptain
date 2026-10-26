@@ -72,7 +72,7 @@ export function StaffDuty() {
       <ScrollView
         contentContainerStyle={[styles.content, r.content, { gap }]}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={list.isRefetching} onRefresh={list.refetch} tintColor={colors.blue} />}>
+        refreshControl={<RefreshControl refreshing={list.isRefetching} onRefresh={() => void list.refetch()} tintColor={colors.blue} />}>
         <View style={styles.head}>
           <Text variant="title">Duty</Text>
           {b ? <Badge label={live && onBreak ? 'On break' : statusInfo[b.status].label} tone={live ? (onBreak ? 'amber' : 'green') : 'blue'} /> : null}

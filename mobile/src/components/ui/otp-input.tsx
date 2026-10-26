@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import type { ComponentRef } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { colors, fonts, radius, space } from '@/theme';
@@ -12,7 +13,7 @@ type OtpInputProps = {
 
 // One hidden input drives the boxes, so paste and SMS autofill both work.
 export function OtpInput({ value, onChange, length = 6, error }: OtpInputProps) {
-  const ref = useRef<TextInput>(null);
+  const ref = useRef<ComponentRef<typeof TextInput>>(null);
   const [focused, setFocused] = useState(true);
 
   return (

@@ -1,4 +1,5 @@
 import { forwardRef, useState, type ReactNode } from 'react';
+import type { ComponentRef } from 'react';
 import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 
 import { colors, fonts, radius, space } from '@/theme';
@@ -13,7 +14,7 @@ export type TextFieldProps = TextInputProps & {
   suffix?: ReactNode;
 };
 
-export const TextField = forwardRef<TextInput, TextFieldProps>(function TextField(
+export const TextField = forwardRef<ComponentRef<typeof TextInput>, TextFieldProps>(function TextField(
   { label, error, hint, prefix, suffix, onFocus, onBlur, style, ...rest },
   ref,
 ) {

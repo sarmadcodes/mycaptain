@@ -34,7 +34,7 @@ export function CustomerBookings() {
       <ScrollView
         contentContainerStyle={[styles.content, r.content]}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.blue} />}>
+        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} tintColor={colors.blue} />}>
         <Text variant="title">Bookings</Text>
         <Segmented
           value={tab}

@@ -41,7 +41,7 @@ export function AdminPartners() {
       <ScrollView
         contentContainerStyle={[r.content, styles.content]}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.blue} />}>
+        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} tintColor={colors.blue} />}>
         <View style={{ gap: 4 }}>
           <Text variant="title">Partners</Text>
           <Text tone="muted">Company applications from the partner website</Text>
