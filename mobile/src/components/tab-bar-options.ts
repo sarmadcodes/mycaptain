@@ -1,4 +1,4 @@
-﻿import type { Tabs } from 'expo-router';
+import type { Tabs } from 'expo-router';
 import { useMemo, type ComponentProps } from 'react';
 
 import { useResponsive } from '@/lib/use-responsive';

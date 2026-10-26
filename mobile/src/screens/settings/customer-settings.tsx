@@ -1,9 +1,9 @@
 import { router } from 'expo-router';
-import { CheckCircle2, CreditCard, Plus, Smartphone } from 'lucide-react-native';
+import { CreditCard, Plus, Smartphone } from 'lucide-react-native';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { Badge, Button, Card, DetailRow, EmptyView, ErrorView, Header, ListRow, LoadingView, Screen, Section, Text, TextField } from '@/components/ui';
+import { Badge, Button, Card, DetailRow, EmptyView, ErrorView, Header, LoadingView, Screen, Text, TextField } from '@/components/ui';
 import { useBookings } from '@/features/api';
 import { useMe, useUpdateMe } from '@/features/ops';
 import { bookingTitle, isLive, statusInfo } from '@/features/booking/labels';

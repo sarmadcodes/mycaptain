@@ -1,8 +1,8 @@
 import { create } from 'zustand';
-
-type VehicleClass = 'small' | 'sedan' | 'suv' | 'luxury';
 import type { ServiceType } from '@/types';
 import { firstOpenTime, today } from '@/utils/datetime';
+
+type VehicleClass = 'small' | 'sedan' | 'suv' | 'luxury';
 
 export type Plan = 'hourly' | 'daily' | 'monthly' | 'contract';
 

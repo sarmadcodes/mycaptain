@@ -26,7 +26,6 @@ export function SosButton({ bookingId }: { bookingId?: string }) {
     const title = 'Send emergency alert?';
     const body = 'Operations is alerted immediately with your location. If anyone is hurt or in danger, also call 1122 or 15.';
     if (Platform.OS === 'web') {
-      // eslint-disable-next-line no-alert
       if (window.confirm(`${title}\n\n${body}`)) raise();
       return;
     }

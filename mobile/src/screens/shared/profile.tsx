@@ -85,7 +85,7 @@ function DeleteAccount() {
     const title = 'Delete your account?';
     const body = 'Your name, number and email are removed and you are signed out. This cannot be undone.';
     if (Platform.OS === 'web') {
-      // eslint-disable-next-line no-alert
+       
       if (window.confirm(`${title}\n\n${body}`)) remove();
       return;
     }

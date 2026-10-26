@@ -1,6 +1,6 @@
-type VehicleClass = 'small' | 'sedan' | 'suv' | 'luxury';
-
 import type { BookingDraft } from './store';
+
+type VehicleClass = 'small' | 'sedan' | 'suv' | 'luxury';
 
 // Illustrative hourly rates in PKR. Real rates will come from admin rate cards.
 const driverRate: Record<VehicleClass, number> = { small: 800, sedan: 900, suv: 1000, luxury: 1400 };

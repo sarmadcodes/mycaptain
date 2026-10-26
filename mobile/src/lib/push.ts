@@ -23,9 +23,12 @@ if (Platform.OS !== 'web') {
 
 async function channels() {
   if (Platform.OS !== 'android') return;
+  // import/namespace cannot follow expo-notifications' re-exports on Linux; AndroidImportance exists.
+  // eslint-disable-next-line import/namespace
   await Notifications.setNotificationChannelAsync('default', { name: 'Bookings and messages', importance: Notifications.AndroidImportance.DEFAULT });
   await Notifications.setNotificationChannelAsync('urgent', {
     name: 'Emergencies',
+    // eslint-disable-next-line import/namespace
     importance: Notifications.AndroidImportance.MAX,
     vibrationPattern: [0, 400, 200, 400],
     bypassDnd: true,
